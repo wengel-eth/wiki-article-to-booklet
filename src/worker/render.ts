@@ -1,7 +1,11 @@
 import puppeteer, { type BrowserWorker, type Page } from "@cloudflare/puppeteer";
+import type { PaperId } from "../shared/paper";
 import { BUILD_CONTENTS, fillContents, headingPages, REMOVE_CONTENTS } from "./contents";
 import { GRAYSCALE_COLORS } from "./grayscale";
-import { FONT_ORIGIN } from "./print-css";
+import { contentBox, FONT_ORIGIN } from "./print-css";
+import { fitTables } from "./tables";
+
+const PX_PER_MM = 96 / 25.4;
 
 const LOAD_TIMEOUT_MS = 40_000;
 const PDF_TIMEOUT_MS = 60_000;
@@ -27,10 +31,26 @@ function allowed(url: string): boolean {
  * Renders a print-ready HTML document to PDF using Cloudflare Browser Run.
  * `assets` is the Worker's static assets binding, which serves the fonts.
  */
-export async function renderPdf(endpoint: BrowserWorker, assets: Fetcher, html: string): Promise<Uint8Array> {
+export async function renderPdf(
+  endpoint: BrowserWorker,
+  assets: Fetcher,
+  html: string,
+  paper: PaperId,
+): Promise<Uint8Array> {
+  const box = contentBox(paper);
+  const layout = {
+    columnPx: Math.floor(box.width * PX_PER_MM),
+    // A little short of the full height, so a sideways page never spills over.
+    pageHeightPx: Math.floor((box.height - 2) * PX_PER_MM),
+  };
+
   const browser = await puppeteer.launch(endpoint);
   try {
     const page = await browser.newPage();
+    // Lay the page out at the width of the printed text column, so tables
+    // can be measured as they will print.
+    await page.setViewport({ width: layout.columnPx, height: 1000 });
+    await page.emulateMediaType("print");
     await page.setRequestInterception(true);
     page.on("request", (req) => {
       const url = req.url();
@@ -51,6 +71,7 @@ export async function renderPdf(endpoint: BrowserWorker, assets: Fetcher, html: 
     }
 
     await page.evaluate(GRAYSCALE_COLORS);
+    await page.evaluate(fitTables(layout));
     const entries = (await page.evaluate(BUILD_CONTENTS)) as number;
     let pdf = await print(page);
     if (entries === 0) return pdf;

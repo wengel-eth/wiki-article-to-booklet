@@ -101,3 +101,10 @@ test("wide images are marked to keep the full width", async () => {
   expect(html).toContain('<img src="https://upload.wikimedia.org/pano.jpg" width="500" height="200" data-wide="" />');
   expect(html).toContain('<img src="https://upload.wikimedia.org/x2.jpg" width="250" height="200" />');
 });
+
+test("fitTables embeds the page layout and its stylesheet is in the print CSS", async () => {
+  const { fitTables, TABLE_CSS } = await import("../src/worker/tables");
+  expect(fitTables({ columnPx: 425, pageHeightPx: 694 })).toContain('({"columnPx":425,"pageHeightPx":694}, 0.7, 1.3)');
+  const { html } = await makePrintable(PARSOID, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
+  expect(html).toContain(TABLE_CSS.trim().split("\n")[0]);
+});

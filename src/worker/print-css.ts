@@ -1,5 +1,6 @@
 import { bookletPageSize, type PaperId } from "../shared/paper";
 import { FONT_FACES } from "./fonts";
+import { TABLE_CSS } from "./tables";
 
 /** Fonts are requested from this made-up host and answered by the Worker. */
 export const FONT_ORIGIN = "https://fonts.booklet.invalid";
@@ -9,6 +10,15 @@ const SERIF = `"Literata", "Noto Serif", "DejaVu Serif", "Liberation Serif", Geo
 // Margins in mm. The inner margin (along the fold) is a little wider than the
 // outer one so text doesn't disappear into the spine.
 const MARGIN = { top: 14, bottom: 16, inner: 15, outer: 12 };
+
+/** The text area of a booklet page, in millimetres. */
+export function contentBox(paper: PaperId): { width: number; height: number } {
+  const page = bookletPageSize(paper);
+  return {
+    width: page.width - MARGIN.inner - MARGIN.outer,
+    height: page.height - MARGIN.top - MARGIN.bottom,
+  };
+}
 
 export interface PrintCssOptions {
   paper: PaperId;
@@ -204,6 +214,9 @@ dl { margin: 0 0 2mm; }
 blockquote { margin: 2mm 5mm; font-size: 9pt; }
 pre, code { font-family: "Noto Sans Mono", "DejaVu Sans Mono", monospace; font-size: 0.85em; }
 pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Wide and long tables; see tables.ts */
+${TABLE_CSS}
 
 /* Sections that don't belong on paper */
 section:has(> h2#External_links, > .mw-heading > h2#External_links),

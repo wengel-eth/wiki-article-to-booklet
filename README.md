@@ -46,6 +46,9 @@ IndexedDB, offer download
 - Figures sit beside the text at under half the column width; wide images
   (panoramas, maps, diagrams) keep the full width. References and notes start
   on a new page.
+- Tables that don't fit the column are shrunk (to no less than 70%); wider
+  ones go sideways on pages of their own, split across pages if needed.
+  Header rows repeat on every page a table runs onto.
 - Requests are limited per IP with the Workers rate limiting binding
   (5 a minute, set in `wrangler.jsonc`).
 

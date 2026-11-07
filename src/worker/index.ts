@@ -20,7 +20,7 @@ app.post("/api/booklet", async (c) => {
   const references = body.references !== false;
   const grayscale = body.grayscale === true;
   const article = await makePrintable(source, ref, { paper: body.paper, references, grayscale });
-  const pdf = await renderPdf(c.env.BROWSER, c.env.ASSETS, article.html);
+  const pdf = await renderPdf(c.env.BROWSER, c.env.ASSETS, article.html, body.paper);
 
   return new Response(pdf, {
     headers: {
