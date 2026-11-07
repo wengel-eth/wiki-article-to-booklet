@@ -105,6 +105,9 @@ a { color: inherit; text-decoration: none; }
   break-after: page;
 }
 .booklet-colophon p { text-align: left; hyphens: none; margin: 0 0 2mm; overflow-wrap: anywhere; }
+.booklet-qr-block { display: flex; align-items: flex-end; gap: 4mm; margin-bottom: 8mm; }
+.booklet-qr { flex: none; }
+.booklet-qr-block p { margin: 0 0 1mm; font-size: 8pt; }
 
 /* Contents */
 .booklet-contents { page: contents; break-after: page; }
@@ -157,6 +160,20 @@ figure img, .thumb img {
   max-height: ${Math.round(page.height * 0.4)}mm;
   object-fit: contain;
 }
+/* The page image, full width at the top like the Wikipedia app's header.
+   Tall images are cropped, keeping the upper part, where faces usually are. */
+.booklet-lead { margin: 0 0 4mm; break-inside: avoid; }
+.booklet-lead img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: ${Math.round(page.height * 0.4)}mm;
+  object-fit: cover;
+  object-position: 50% 30%;
+}
+.booklet-lead-caption { font-size: 7pt; line-height: 1.3; text-align: left; margin: 1mm 0 0; }
+/* The infobox row the image came from, now empty. */
+.infobox tr:has(> .infobox-image):not(:has(img)) { display: none; }
 figcaption, .thumbcaption { font-size: 7pt; line-height: 1.3; text-align: left; hyphens: auto; margin-top: 1mm; }
 .infobox img { max-height: ${Math.round(page.height * 0.22)}mm; object-fit: contain; }
 ul.gallery { list-style: none; padding: 0; margin: 3mm 0; display: flex; flex-wrap: wrap; gap: 2mm; justify-content: center; clear: both; }
@@ -191,6 +208,12 @@ ol.references {
 .mw-references-wrap ol.references, .reflist ol.references { font-size: inherit; }
 .references li { text-align: left; hyphens: none; overflow-wrap: anywhere; margin-bottom: 0.6mm; break-inside: avoid; }
 .reflist .mw-references-wrap { columns: auto !important; }
+/* Web addresses, printed after the link text since nothing on paper is clickable. */
+a[data-url]::after {
+  content: " (" attr(data-url) ")";
+  overflow-wrap: anywhere;
+  hyphens: none;
+}
 
 /* Black and white, to save colour ink. Chrome keeps filtered images at print
    resolution. Text, background and border colours are turned grey by a script

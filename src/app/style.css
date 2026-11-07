@@ -98,5 +98,18 @@ button.plain { background: none; color: var(--fg); border-color: var(--line); }
 .booklets .actions { margin-left: auto; display: flex; gap: 0.5rem; }
 .booklets button { margin: 0; font-size: 0.9rem; padding: 0.15rem 0.6rem; }
 
+dialog.confirm {
+  max-width: min(26rem, calc(100vw - 2rem));
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--fg);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+dialog.confirm::backdrop { background: rgb(0 0 0 / 0.35); }
+dialog.confirm p { margin: 0 0 0.6rem; }
+.confirm-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+.confirm-actions button { margin: 0; }
+
 ol { padding-left: 1.4rem; }
 footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); }

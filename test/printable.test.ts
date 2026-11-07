@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { largestCandidate, makePrintable } from "../src/worker/printable";
 
 // A cut-down version of what Wikipedia's REST API returns.
@@ -47,7 +47,8 @@ test("makePrintable cleans up and adds front matter", async () => {
   expect(html).toContain("<h1>AC/DC &#38; friends</h1>");
   expect(html).toContain("revision 1234567");
   expect(html).toContain("https://en.wikipedia.org/w/index.php?oldid=1234567");
-  expect(html).toContain("Retrieved 7 November 2026.");
+  expect(html).toContain("Generated 7 November 2026 at 12:00 UTC");
+  expect(html).toContain('<svg class="booklet-qr"');
   expect(html).toContain("Creative Commons Attribution-ShareAlike 4.0");
 
   // Booklet page for A4 paper is A5
@@ -107,4 +108,72 @@ test("fitTables embeds the page layout and its stylesheet is in the print CSS", 
   expect(fitTables({ columnPx: 425, pageHeightPx: 694 })).toContain('({"columnPx":425,"pageHeightPx":694}, 0.7, 1.3)');
   const { html } = await makePrintable(PARSOID, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
   expect(html).toContain(TABLE_CSS.trim().split("\n")[0]);
+});
+
+test("generatedAt uses the reader's time zone, falling back to UTC", async () => {
+  const { generatedAt } = await import("../src/worker/printable");
+  const when = new Date("2026-11-07T19:32:00Z");
+  expect(generatedAt(when, "America/Toronto")).toBe("7 November 2026 at 14:32 EST");
+  expect(generatedAt(when, "Europe/Paris")).toBe("7 November 2026 at 20:32 GMT+1");
+  expect(generatedAt(when, "Not/AZone")).toBe("7 November 2026 at 19:32 UTC");
+  expect(generatedAt(when)).toBe("7 November 2026 at 19:32 UTC");
+});
+
+test("QR codes grow for long links so the squares stay printable", async () => {
+  const { qrSvg } = await import("../src/worker/qr");
+  expect(qrSvg("https://en.wikipedia.org/wiki/Moon", 18)).toContain('width="18mm"');
+  const long = `https://zh.wikipedia.org/wiki/${encodeURIComponent("中華人民共和國香港特別行政區立法會選舉")}`;
+  const width = Number(qrSvg(long, 18).match(/width="(\d+)mm"/)![1]);
+  expect(width).toBeGreaterThan(18);
+});
+
+describe("header image", () => {
+  const page = (body: string) =>
+    `<!DOCTYPE html><html><head><title>Eddystone Lighthouse</title></head><body><section data-mw-section-id="0">${body}</section><section><h2>History</h2><p>Text.</p></section></body></html>`;
+  const pageImage = {
+    file: "Eddystone_Lighthouse_-_geograph.jpg",
+    src: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Eddystone_Lighthouse_-_geograph.jpg/1280px-Eddystone_Lighthouse_-_geograph.jpg",
+    width: 1280,
+    height: 960,
+  };
+  const make = (body: string, image = pageImage) =>
+    makePrintable(page(body), { lang: "en", title: "Eddystone Lighthouse" }, { paper: "a4", references: true, grayscale: false, pageImage: image });
+  const lead = (html: string) => html.match(/<div class="booklet-lead">.*?<\/div>/s)?.[0];
+
+  test("moves the infobox image to the top, with its caption", async () => {
+    const { html } = await make(`<table class="infobox"><tr><td class="infobox-image"><span typeof="mw:File"><a><img resource="./File:Eddystone_Lighthouse_-_geograph.jpg" src="//upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Eddystone_Lighthouse_-_geograph.jpg/220px-Eddystone_Lighthouse_-_geograph.jpg" width="220" height="165"/></a></span><div class="infobox-caption">The current tower, &amp; its stump</div></td></tr><tr><th>Height</th><td>49 m</td></tr></table><p>Lead.</p>`);
+    expect(lead(html)).toContain(`src="${pageImage.src}" width="1280" height="960"`);
+    expect(lead(html)).toContain('<p class="booklet-lead-caption">The current tower, &#38; its stump</p>');
+    expect(html).not.toContain("220px-Eddystone");
+    expect(html.indexOf('class="booklet-lead"')).toBeLessThan(html.indexOf('class="infobox"'));
+  });
+
+  test("takes the image's figure out when the lead image is a figure", async () => {
+    const { html } = await make(`<figure class="noprint"><img src="//x/hidden.jpg" width="10" height="10"/></figure><p>Lead.</p><figure typeof="mw:File/Thumb"><a><img resource="./File:Eddystone%20Lighthouse%20-%20geograph.jpg" src="//x/a.jpg" width="250" height="180"/></a><figcaption>From the sea</figcaption></figure><figure typeof="mw:File/Thumb"><img resource="./File:Other.jpg" src="//x/other.jpg" width="250" height="180"/><figcaption>Another</figcaption></figure>`);
+    expect(lead(html)).toContain("From the sea");
+    expect(html).not.toContain("//x/a.jpg");
+    expect(html).toContain("https://x/other.jpg");
+    expect(html).toContain("<figcaption>Another</figcaption>");
+  });
+
+  test("does nothing if the image isn't in the article, or is too small to print full width", async () => {
+    const body = `<p>Lead.</p><figure><img resource="./File:Other.jpg" src="//x/other.jpg" width="250" height="180"/></figure>`;
+    expect(lead((await make(body)).html)).toBeUndefined();
+    const small = { ...pageImage, file: "Other.jpg", width: 400, height: 300 };
+    expect(lead((await make(body, small)).html)).toBeUndefined();
+  });
+});
+
+test("references lose their jump-back links and keep web addresses", async () => {
+  const refs = `<!DOCTYPE html><html><head><title>X</title></head><body><section><p>Text.</p></section><section><h2>References</h2><div class="mw-references-wrap"><ol class="mw-references references">
+<li id="cite_note-1"><span class="mw-cite-backlink"><a href="./X#cite_ref-1" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a></span> <span class="mw-reference-text">Smith, J. <a rel="mw:ExtLink nofollow" href="https://www.lighthouses.org/history/" class="external text">"Lights of the World"</a>. <a rel="mw:WikiLink" href="./Harbour_Press">Harbour Press</a>.</span></li>
+<li id="cite_note-2"><span class="mw-cite-backlink"><span rel="mw:referencedBy"><a href="./X#cite_ref-2a"><span class="mw-linkback-text">1 </span></a><a href="./X#cite_ref-2b"><span class="mw-linkback-text">2 </span></a></span></span> <span class="mw-reference-text"><a rel="mw:ExtLink nofollow" href="http://example.com/a?b=1" class="external free">http://example.com/a?b=1</a></span></li>
+</ol></div></section></body></html>`;
+  const { html } = await makePrintable(refs, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
+  expect(html).not.toContain("mw-cite-backlink");
+  expect(html).not.toContain("mw-linkback-text");
+  expect(html).toContain('<a rel="mw:ExtLink nofollow" class="external text" data-url="lighthouses.org/history">');
+  expect(html).toContain('<a rel="mw:ExtLink nofollow" class="external free">http://example.com/a?b=1</a>');
+  expect(html).toContain('<a rel="mw:WikiLink">Harbour Press</a>');
+  expect(html).not.toContain("href=");
 });

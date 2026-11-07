@@ -1,6 +1,7 @@
 import type { PaperId } from "../shared/paper";
 import { printCss } from "./print-css";
-import { articleUrl, type ArticleRef } from "./wikipedia";
+import { qrSvg } from "./qr";
+import { articleUrl, type ArticleRef, type PageImage } from "./wikipedia";
 
 export interface PrintableArticle {
   title: string;
@@ -37,6 +38,10 @@ const REMOVE = [
   ".Inline-Template",
   "#coordinates",
   '[role="navigation"]',
+  // In reference lists, the ↑ / "a b c" links that jump back to where a
+  // source was cited. Nowhere to jump to on paper.
+  ".mw-cite-backlink",
+  '[rel~="mw:referencedBy"]',
 ].join(", ");
 
 /**
@@ -49,7 +54,14 @@ export interface PrintOptions {
   references: boolean;
   /** Print in black and white: images, text, tables and borders. */
   grayscale: boolean;
+  /** IANA time zone for the "generated" time, from the reader's browser. UTC if missing or unknown. */
+  timeZone?: string;
+  /** The article's page image, shown full width at the top like in the Wikipedia app. */
+  pageImage?: PageImage | null;
 }
+
+/** Below this width the header image would print blurry, so it stays where it is. */
+const MIN_LEAD_WIDTH = 600;
 
 /** Images at least this many times wider than tall are printed full width. */
 const WIDE_RATIO = 1.6;
@@ -60,12 +72,19 @@ const REFERENCES = ["sup.mw-ref", "sup.reference", ".mw-references-wrap", ".refl
 export async function makePrintable(
   source: string,
   ref: ArticleRef,
-  { paper, references, grayscale }: PrintOptions,
+  { paper, references, grayscale, timeZone, pageImage }: PrintOptions,
   now = new Date(),
 ): Promise<PrintableArticle> {
   let rawTitle = "";
   let revision: string | null = null;
   const lang = ref.lang;
+
+  // The header image: find where the page image sits in the article, take it
+  // out of there (with its caption), and put it full width at the top.
+  const lead = pageImage && pageImage.width >= MIN_LEAD_WIDTH ? await locateImage(source, pageImage.file) : null;
+  let imgCount = -1;
+  let figureCount = -1;
+  let leadPlaced = false;
 
   const title = () => decodeEntities(rawTitle).trim() || ref.title;
 
@@ -103,8 +122,19 @@ export async function makePrintable(
     // also lists 1.5x and 2x versions in srcset, which Chrome ignores when
     // printing, so use the largest as the image itself. The width/height
     // attributes keep it at the same size on the page.
+    .on("figure", {
+      element(el) {
+        figureCount++;
+        if (lead && lead.figure === figureCount) el.remove();
+      },
+    })
     .on("img", {
       element(el) {
+        imgCount++;
+        if (lead && lead.figure === null && lead.img === imgCount) {
+          el.remove();
+          return;
+        }
         const srcset = el.getAttribute("srcset");
         const best = srcset ? largestCandidate(srcset) : null;
         const src = best ?? el.getAttribute("src");
@@ -142,6 +172,14 @@ export async function makePrintable(
     })
     .on("a[href]", {
       element(el) {
+        // External links (mostly in references) keep their address, which is
+        // printed after the link text; see print-css.ts. Bare links, whose
+        // text already is the address, don't need it twice.
+        const href = el.getAttribute("href")!;
+        const external = /^https?:\/\//i.test(href) || href.startsWith("//");
+        if (external && !(el.getAttribute("class") ?? "").split(/\s+/).includes("free")) {
+          el.setAttribute("data-url", displayUrl(href));
+        }
         el.removeAttribute("href");
       },
     })
@@ -156,7 +194,18 @@ export async function makePrintable(
         if (!references) classes.push("no-references");
         if (grayscale) classes.push("grayscale");
         el.setAttribute("class", classes.join(" ").trim());
-        el.prepend(frontMatter(title(), ref, revision, now), { html: true });
+        el.prepend(frontMatter(title(), ref, revision, generatedAt(now, timeZone)), { html: true });
+      },
+    })
+    .on("section", {
+      element(el) {
+        if (!lead || !pageImage || leadPlaced) return;
+        leadPlaced = true;
+        const caption = lead.caption ? `<p class="booklet-lead-caption">${escapeHtml(lead.caption)}</p>` : "";
+        el.prepend(
+          `<div class="booklet-lead"><img src="${escapeHtml(pageImage.src)}" width="${pageImage.width}" height="${pageImage.height}" alt="">${caption}</div>`,
+          { html: true },
+        );
       },
     });
 
@@ -172,6 +221,103 @@ export async function makePrintable(
   return { title: title(), revision, html };
 }
 
+interface LocatedImage {
+  /** Index of the image among all <img> elements, in document order. */
+  img: number;
+  /** Index of the <figure> it's in, or null (for example, in an infobox). */
+  figure: number | null;
+  caption: string;
+}
+
+/**
+ * Finds the first <img> showing `file`, and its caption: the figure's
+ * <figcaption>, or the infobox caption in the same cell. Counts elements the
+ * same way makePrintable does (after removing the same junk), so the indexes
+ * line up.
+ */
+async function locateImage(source: string, file: string): Promise<LocatedImage | null> {
+  const wanted = normaliseFile(file);
+  let img = -1;
+  let figure = -1;
+  const figures: number[] = [];
+  let found: LocatedImage | null = null;
+  let capturing = false;
+  let rawCaption = "";
+
+  await new HTMLRewriter()
+    .on(REMOVE, {
+      element(el) {
+        el.remove();
+      },
+    })
+    .on("figure", {
+      element(el) {
+        const index = ++figure;
+        figures.push(index);
+        el.onEndTag(() => {
+          figures.pop();
+          if (found?.figure === index) capturing = false;
+        });
+      },
+    })
+    .on("td, th", {
+      element(el) {
+        el.onEndTag(() => {
+          if (found && found.figure === null) capturing = false;
+        });
+      },
+    })
+    .on("img", {
+      element(el) {
+        img++;
+        if (found) {
+          capturing = false;
+          return;
+        }
+        if (imageFile(el.getAttribute("resource"), el.getAttribute("src")) === wanted) {
+          found = { img, figure: figures.at(-1) ?? null, caption: "" };
+          capturing = true;
+        }
+      },
+    })
+    .on("figcaption, .infobox-caption", {
+      text(chunk) {
+        if (capturing) rawCaption += chunk.text;
+      },
+    })
+    .transform(new Response(source))
+    .text();
+
+  const result = found as LocatedImage | null;
+  if (!result) return null;
+  return { ...result, caption: decodeEntities(rawCaption).replace(/\s+/g, " ").trim() };
+}
+
+/** The file name an <img> shows, from Parsoid's resource="./File:X.jpg", or its thumbnail URL. */
+function imageFile(resource: string | null, src: string | null): string | null {
+  if (resource) return normaliseFile(resource.replace(/^\.\//, "").replace(/^[^:]+:/, ""));
+  // .../commons/thumb/a/ab/X.jpg/440px-X.jpg or .../commons/a/ab/X.jpg
+  const m = src?.match(/\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/]+)/);
+  return m ? normaliseFile(m[1]) : null;
+}
+
+function normaliseFile(name: string): string {
+  let decoded = name;
+  try {
+    decoded = decodeURIComponent(name);
+  } catch {}
+  decoded = decoded.replace(/ /g, "_");
+  return decoded.charAt(0).toUpperCase() + decoded.slice(1);
+}
+
+/** An address as printed: without https:// or www., and without a trailing slash. */
+export function displayUrl(href: string): string {
+  return href
+    .replace(/^(https?:)?\/\//i, "")
+    .replace(/^www\./i, "")
+    .replace(/\/$/, "");
+}
+
 /** The URL with the highest density (2x, 1.5x, ...) in a srcset. */
 export function largestCandidate(srcset: string): string | null {
   let best: { url: string; density: number } | null = null;
@@ -184,12 +330,28 @@ export function largestCandidate(srcset: string): string | null {
   return best?.url ?? null;
 }
 
-function frontMatter(title: string, ref: ArticleRef, revision: string | null, now: Date): string {
+/** "7 November 2026 at 14:32 EST", in the given time zone (UTC if it isn't a real one). */
+export function generatedAt(now: Date, timeZone = "UTC"): string {
+  let zone = timeZone;
+  try {
+    new Intl.DateTimeFormat("en-GB", { timeZone: zone });
+  } catch {
+    zone = "UTC";
+  }
+  const date = now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: zone });
+  const time = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: zone });
+  const name =
+    new Intl.DateTimeFormat("en-US", { timeZone: zone, timeZoneName: "short" })
+      .formatToParts(now)
+      .find((p) => p.type === "timeZoneName")?.value ?? zone;
+  return `${date} at ${time} ${name}`;
+}
+
+function frontMatter(title: string, ref: ArticleRef, revision: string | null, generated: string): string {
   const url = articleUrl({ ...ref, title });
   const host = `https://${ref.lang}.wikipedia.org`;
   const permalink = revision ? `${host}/w/index.php?oldid=${revision}` : null;
   const history = `${host}/w/index.php?title=${encodeURIComponent(title.replace(/ /g, "_"))}&action=history`;
-  const date = now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
   return `
 <header class="booklet-cover">
@@ -197,10 +359,15 @@ function frontMatter(title: string, ref: ArticleRef, revision: string | null, no
   <p>From Wikipedia, the free encyclopedia</p>
 </header>
 <aside class="booklet-colophon">
+  <div class="booklet-qr-block">
+    ${qrSvg(url, 18)}
+    <div>
+      <p>${escapeHtml(url)}</p>
+      <p>Generated ${escapeHtml(generated)}</p>
+    </div>
+  </div>
   <p><strong>${escapeHtml(title)}</strong></p>
-  <p>Source: ${escapeHtml(url)}</p>
   ${permalink ? `<p>This copy: revision ${revision}, ${escapeHtml(permalink)}</p>` : ""}
-  <p>Retrieved ${escapeHtml(date)}.</p>
   <p>Text is available under the Creative Commons Attribution-ShareAlike 4.0 License
   (https://creativecommons.org/licenses/by-sa/4.0/); additional terms may apply.
   Images may be under other licences; see each file's page on Wikipedia.
