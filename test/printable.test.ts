@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { largestCandidate, makePrintable } from "../src/worker/printable";
 
 // A cut-down version of what Wikipedia's REST API returns.
@@ -125,4 +125,41 @@ test("QR codes grow for long links so the squares stay printable", async () => {
   const long = `https://zh.wikipedia.org/wiki/${encodeURIComponent("中華人民共和國香港特別行政區立法會選舉")}`;
   const width = Number(qrSvg(long, 18).match(/width="(\d+)mm"/)![1]);
   expect(width).toBeGreaterThan(18);
+});
+
+describe("header image", () => {
+  const page = (body: string) =>
+    `<!DOCTYPE html><html><head><title>Eddystone Lighthouse</title></head><body><section data-mw-section-id="0">${body}</section><section><h2>History</h2><p>Text.</p></section></body></html>`;
+  const pageImage = {
+    file: "Eddystone_Lighthouse_-_geograph.jpg",
+    src: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Eddystone_Lighthouse_-_geograph.jpg/1280px-Eddystone_Lighthouse_-_geograph.jpg",
+    width: 1280,
+    height: 960,
+  };
+  const make = (body: string, image = pageImage) =>
+    makePrintable(page(body), { lang: "en", title: "Eddystone Lighthouse" }, { paper: "a4", references: true, grayscale: false, pageImage: image });
+  const lead = (html: string) => html.match(/<div class="booklet-lead">.*?<\/div>/s)?.[0];
+
+  test("moves the infobox image to the top, with its caption", async () => {
+    const { html } = await make(`<table class="infobox"><tr><td class="infobox-image"><span typeof="mw:File"><a><img resource="./File:Eddystone_Lighthouse_-_geograph.jpg" src="//upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Eddystone_Lighthouse_-_geograph.jpg/220px-Eddystone_Lighthouse_-_geograph.jpg" width="220" height="165"/></a></span><div class="infobox-caption">The current tower, &amp; its stump</div></td></tr><tr><th>Height</th><td>49 m</td></tr></table><p>Lead.</p>`);
+    expect(lead(html)).toContain(`src="${pageImage.src}" width="1280" height="960"`);
+    expect(lead(html)).toContain('<p class="booklet-lead-caption">The current tower, &#38; its stump</p>');
+    expect(html).not.toContain("220px-Eddystone");
+    expect(html.indexOf('class="booklet-lead"')).toBeLessThan(html.indexOf('class="infobox"'));
+  });
+
+  test("takes the image's figure out when the lead image is a figure", async () => {
+    const { html } = await make(`<figure class="noprint"><img src="//x/hidden.jpg" width="10" height="10"/></figure><p>Lead.</p><figure typeof="mw:File/Thumb"><a><img resource="./File:Eddystone%20Lighthouse%20-%20geograph.jpg" src="//x/a.jpg" width="250" height="180"/></a><figcaption>From the sea</figcaption></figure><figure typeof="mw:File/Thumb"><img resource="./File:Other.jpg" src="//x/other.jpg" width="250" height="180"/><figcaption>Another</figcaption></figure>`);
+    expect(lead(html)).toContain("From the sea");
+    expect(html).not.toContain("//x/a.jpg");
+    expect(html).toContain("https://x/other.jpg");
+    expect(html).toContain("<figcaption>Another</figcaption>");
+  });
+
+  test("does nothing if the image isn't in the article, or is too small to print full width", async () => {
+    const body = `<p>Lead.</p><figure><img resource="./File:Other.jpg" src="//x/other.jpg" width="250" height="180"/></figure>`;
+    expect(lead((await make(body)).html)).toBeUndefined();
+    const small = { ...pageImage, file: "Other.jpg", width: 400, height: 300 };
+    expect(lead((await make(body, small)).html)).toBeUndefined();
+  });
 });

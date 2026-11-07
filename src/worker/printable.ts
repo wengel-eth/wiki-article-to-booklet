@@ -1,7 +1,7 @@
 import type { PaperId } from "../shared/paper";
 import { printCss } from "./print-css";
 import { qrSvg } from "./qr";
-import { articleUrl, type ArticleRef } from "./wikipedia";
+import { articleUrl, type ArticleRef, type PageImage } from "./wikipedia";
 
 export interface PrintableArticle {
   title: string;
@@ -52,7 +52,12 @@ export interface PrintOptions {
   grayscale: boolean;
   /** IANA time zone for the "generated" time, from the reader's browser. UTC if missing or unknown. */
   timeZone?: string;
+  /** The article's page image, shown full width at the top like in the Wikipedia app. */
+  pageImage?: PageImage | null;
 }
+
+/** Below this width the header image would print blurry, so it stays where it is. */
+const MIN_LEAD_WIDTH = 600;
 
 /** Images at least this many times wider than tall are printed full width. */
 const WIDE_RATIO = 1.6;
@@ -63,12 +68,19 @@ const REFERENCES = ["sup.mw-ref", "sup.reference", ".mw-references-wrap", ".refl
 export async function makePrintable(
   source: string,
   ref: ArticleRef,
-  { paper, references, grayscale, timeZone }: PrintOptions,
+  { paper, references, grayscale, timeZone, pageImage }: PrintOptions,
   now = new Date(),
 ): Promise<PrintableArticle> {
   let rawTitle = "";
   let revision: string | null = null;
   const lang = ref.lang;
+
+  // The header image: find where the page image sits in the article, take it
+  // out of there (with its caption), and put it full width at the top.
+  const lead = pageImage && pageImage.width >= MIN_LEAD_WIDTH ? await locateImage(source, pageImage.file) : null;
+  let imgCount = -1;
+  let figureCount = -1;
+  let leadPlaced = false;
 
   const title = () => decodeEntities(rawTitle).trim() || ref.title;
 
@@ -106,8 +118,19 @@ export async function makePrintable(
     // also lists 1.5x and 2x versions in srcset, which Chrome ignores when
     // printing, so use the largest as the image itself. The width/height
     // attributes keep it at the same size on the page.
+    .on("figure", {
+      element(el) {
+        figureCount++;
+        if (lead && lead.figure === figureCount) el.remove();
+      },
+    })
     .on("img", {
       element(el) {
+        imgCount++;
+        if (lead && lead.figure === null && lead.img === imgCount) {
+          el.remove();
+          return;
+        }
         const srcset = el.getAttribute("srcset");
         const best = srcset ? largestCandidate(srcset) : null;
         const src = best ?? el.getAttribute("src");
@@ -161,6 +184,17 @@ export async function makePrintable(
         el.setAttribute("class", classes.join(" ").trim());
         el.prepend(frontMatter(title(), ref, revision, generatedAt(now, timeZone)), { html: true });
       },
+    })
+    .on("section", {
+      element(el) {
+        if (!lead || !pageImage || leadPlaced) return;
+        leadPlaced = true;
+        const caption = lead.caption ? `<p class="booklet-lead-caption">${escapeHtml(lead.caption)}</p>` : "";
+        el.prepend(
+          `<div class="booklet-lead"><img src="${escapeHtml(pageImage.src)}" width="${pageImage.width}" height="${pageImage.height}" alt="">${caption}</div>`,
+          { html: true },
+        );
+      },
     });
 
   if (!references) {
@@ -173,6 +207,95 @@ export async function makePrintable(
 
   const html = await rewriter.transform(new Response(source)).text();
   return { title: title(), revision, html };
+}
+
+interface LocatedImage {
+  /** Index of the image among all <img> elements, in document order. */
+  img: number;
+  /** Index of the <figure> it's in, or null (for example, in an infobox). */
+  figure: number | null;
+  caption: string;
+}
+
+/**
+ * Finds the first <img> showing `file`, and its caption: the figure's
+ * <figcaption>, or the infobox caption in the same cell. Counts elements the
+ * same way makePrintable does (after removing the same junk), so the indexes
+ * line up.
+ */
+async function locateImage(source: string, file: string): Promise<LocatedImage | null> {
+  const wanted = normaliseFile(file);
+  let img = -1;
+  let figure = -1;
+  const figures: number[] = [];
+  let found: LocatedImage | null = null;
+  let capturing = false;
+  let rawCaption = "";
+
+  await new HTMLRewriter()
+    .on(REMOVE, {
+      element(el) {
+        el.remove();
+      },
+    })
+    .on("figure", {
+      element(el) {
+        const index = ++figure;
+        figures.push(index);
+        el.onEndTag(() => {
+          figures.pop();
+          if (found?.figure === index) capturing = false;
+        });
+      },
+    })
+    .on("td, th", {
+      element(el) {
+        el.onEndTag(() => {
+          if (found && found.figure === null) capturing = false;
+        });
+      },
+    })
+    .on("img", {
+      element(el) {
+        img++;
+        if (found) {
+          capturing = false;
+          return;
+        }
+        if (imageFile(el.getAttribute("resource"), el.getAttribute("src")) === wanted) {
+          found = { img, figure: figures.at(-1) ?? null, caption: "" };
+          capturing = true;
+        }
+      },
+    })
+    .on("figcaption, .infobox-caption", {
+      text(chunk) {
+        if (capturing) rawCaption += chunk.text;
+      },
+    })
+    .transform(new Response(source))
+    .text();
+
+  const result = found as LocatedImage | null;
+  if (!result) return null;
+  return { ...result, caption: decodeEntities(rawCaption).replace(/\s+/g, " ").trim() };
+}
+
+/** The file name an <img> shows, from Parsoid's resource="./File:X.jpg", or its thumbnail URL. */
+function imageFile(resource: string | null, src: string | null): string | null {
+  if (resource) return normaliseFile(resource.replace(/^\.\//, "").replace(/^[^:]+:/, ""));
+  // .../commons/thumb/a/ab/X.jpg/440px-X.jpg or .../commons/a/ab/X.jpg
+  const m = src?.match(/\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/]+)/);
+  return m ? normaliseFile(m[1]) : null;
+}
+
+function normaliseFile(name: string): string {
+  let decoded = name;
+  try {
+    decoded = decodeURIComponent(name);
+  } catch {}
+  decoded = decoded.replace(/ /g, "_");
+  return decoded.charAt(0).toUpperCase() + decoded.slice(1);
 }
 
 /** The URL with the highest density (2x, 1.5x, ...) in a srcset. */

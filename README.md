@@ -43,6 +43,9 @@ IndexedDB, offer download
   by the Worker from its own static assets (`public/fonts/`).
 - Images use the 2x versions Wikipedia lists in `srcset`, at the same size on
   the page, so they print at about 200 dpi instead of 100.
+- The article's page image (the one the Wikipedia app shows as a header,
+  from the PageImages API) goes full width at the top of the article, taken
+  out of the infobox or figure it was in.
 - Figures sit beside the text at under half the column width; wide images
   (panoramas, maps, diagrams) keep the full width. References and notes start
   on a new page.

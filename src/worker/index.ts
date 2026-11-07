@@ -3,7 +3,7 @@ import { isPaperId } from "../shared/paper";
 import type { ServerEvent } from "../shared/progress";
 import { makePrintable } from "./printable";
 import { renderPdf } from "./render";
-import { fetchArticleHtml, parseArticleUrl, UserError } from "./wikipedia";
+import { fetchArticleHtml, fetchPageImage, parseArticleUrl, UserError } from "./wikipedia";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -35,9 +35,9 @@ app.post("/api/booklet", async (c) => {
   const work = (async () => {
     try {
       send({ stage: "fetching" });
-      const source = await fetchArticleHtml(ref);
+      const [source, pageImage] = await Promise.all([fetchArticleHtml(ref), fetchPageImage(ref)]);
       send({ stage: "preparing" });
-      const article = await makePrintable(source, ref, { paper, references, grayscale, timeZone });
+      const article = await makePrintable(source, ref, { paper, references, grayscale, timeZone, pageImage });
       const pdf = await renderPdf(c.env.BROWSER, c.env.ASSETS, article.html, paper, send);
       send({ stage: "pdf", bytes: pdf.byteLength, title: article.title });
       await writer.write(pdf).catch(() => {});
