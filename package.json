@@ -1,0 +1,28 @@
+{
+  "name": "wiki-article-to-booklet",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "bun run build && vite preview",
+    "deploy": "bun run build && wrangler deploy",
+    "test": "bun test",
+    "typegen": "wrangler types"
+  },
+  "dependencies": {
+    "@cloudflare/puppeteer": "^1.4.0",
+    "hono": "^4.13.17",
+    "pdf-lib": "^1.17.1",
+    "vue": "^3.5.45"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.67.0",
+    "@types/bun": "^1.4.4",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "typescript": "~5.9",
+    "vite": "^8.3.6",
+    "vue-tsc": "^3.3.14",
+    "wrangler": "^4.158.0"
+  }
+}

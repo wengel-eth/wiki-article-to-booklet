@@ -1,0 +1,82 @@
+:root {
+  --fg: #1a1a1a;
+  --bg: #fdfdfb;
+  --muted: #6b6b6b;
+  --line: #c8c8c4;
+  --error: #a4161a;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #e4e2dd;
+    --bg: #171717;
+    --muted: #9a9893;
+    --line: #444;
+    --error: #ff8a80;
+    color-scheme: dark;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 17px/1.5 Georgia, "Times New Roman", serif;
+}
+
+main {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: 2.5rem 1rem 3rem;
+}
+
+h1 { font-size: 1.6rem; font-weight: normal; margin: 0 0 0.75rem; }
+h2 { font-size: 1.15rem; font-weight: normal; margin: 2.5rem 0 0.5rem; }
+a { color: inherit; }
+
+form { margin-top: 1.5rem; }
+label { display: block; margin: 1rem 0 0.25rem; }
+
+input, select, button { font: inherit; color: inherit; }
+
+input, select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--bg);
+}
+input:focus, select:focus { outline: 1px solid var(--fg); outline-offset: 0; }
+input[aria-invalid="true"] { border-color: var(--error); }
+
+button {
+  margin-top: 1.25rem;
+  padding: 0.3rem 0.9rem;
+  border: 1px solid var(--fg);
+  border-radius: 0;
+  background: var(--fg);
+  color: var(--bg);
+  cursor: pointer;
+}
+button:disabled { opacity: 0.5; cursor: default; }
+button.plain { background: none; color: var(--fg); border-color: var(--line); }
+
+.note { color: var(--muted); font-size: 0.9rem; }
+.error { color: var(--error); }
+
+.booklets { list-style: none; padding: 0; margin: 0; }
+.booklets li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--line);
+}
+.booklets li.latest > a { font-weight: bold; }
+.booklets .actions { margin-left: auto; display: flex; gap: 0.5rem; }
+.booklets button { margin: 0; font-size: 0.9rem; padding: 0.15rem 0.6rem; }
+
+ol { padding-left: 1.4rem; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); }
