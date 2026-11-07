@@ -69,10 +69,18 @@ a { color: inherit; text-decoration: none; }
 .booklet-contents ol { list-style: none; padding: 0; margin: 0; }
 .booklet-contents li { margin: 0 0 1.2mm; break-inside: avoid; }
 .booklet-contents li.sub { padding-left: 5mm; font-size: 8.5pt; }
-.booklet-contents a { display: flex; align-items: baseline; gap: 3mm; }
-.booklet-contents .t { flex: 1; }
+.booklet-contents a { display: flex; align-items: baseline; }
+.booklet-contents .t { flex: 0 1 auto; text-align: left; }
+.booklet-contents .dots {
+  flex: 1 0 6mm;
+  overflow: hidden;
+  white-space: nowrap;
+  margin: 0 1mm 0 1.5mm;
+  color: #555;
+}
+.booklet-contents .dots::before { content: "${". ".repeat(300)}"; }
 .booklet-contents .num { margin-right: 1.5mm; }
-.booklet-contents .n { flex: none; width: 8mm; text-align: right; font-variant-numeric: tabular-nums; }
+.booklet-contents .n { flex: none; width: 6mm; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Headings */
 h1, h2, h3, h4, h5, h6 { font-weight: normal; break-after: avoid; line-height: 1.25; }

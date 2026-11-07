@@ -13,7 +13,8 @@ gives A5).
 
 1. Print at actual size (100%), not "fit to page".
 2. Print on both sides, flipping on the **short** edge.
-3. Keep the sheets in order, fold the stack in half, staple along the fold.
+3. Keep the sheets in order, fold the stack in half, and staple on the two
+   marks printed along the fold on the outside.
 
 ## How it works
 

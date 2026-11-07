@@ -191,7 +191,7 @@ function formatDate(ms: number) {
       <ol>
         <li>Print at actual size (100%), not "fit to page".</li>
         <li>Print on both sides, flipping on the <em>short</em> edge.</li>
-        <li>Keep the sheets in order, fold the stack in half, and staple twice along the fold.</li>
+        <li>Keep the sheets in order, fold the stack in half, and staple on the two marks along the fold.</li>
       </ol>
       <p class="note">
         If your printer can't print both sides, print the odd pages, put the stack back in,
