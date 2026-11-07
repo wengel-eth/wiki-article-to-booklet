@@ -67,7 +67,9 @@ export const BUILD_CONTENTS = `(() => {
     const number = document.createElement("span");
     number.className = "n";
     number.dataset.target = id;
-    link.append(text, number);
+    const dots = document.createElement("span");
+    dots.className = "dots";
+    link.append(text, dots, number);
     item.append(link);
     list.append(item);
   });
