@@ -71,6 +71,7 @@ a { color: inherit; text-decoration: none; }
 .booklet-contents li.sub { padding-left: 5mm; font-size: 8.5pt; }
 .booklet-contents a { display: flex; align-items: baseline; gap: 3mm; }
 .booklet-contents .t { flex: 1; }
+.booklet-contents .num { margin-right: 1.5mm; }
 .booklet-contents .n { flex: none; width: 8mm; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Headings */
