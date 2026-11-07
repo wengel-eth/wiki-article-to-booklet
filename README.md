@@ -64,6 +64,22 @@ bun run build      # type-check and build
 bun run deploy     # build and deploy with wrangler
 ```
 
+### Deploying from GitHub (Workers Builds)
+
+In the Worker's **Settings → Build**, set:
+
+| Setting         | Value                  |
+| --------------- | ---------------------- |
+| Build command   | `bun run build`        |
+| Deploy command  | `npx wrangler deploy`  |
+
+The build step is required. The Vite build writes the deployable Worker
+config (with the static assets directory) to `dist/`, and `wrangler deploy`
+picks it up from there. Without it, deploy fails with "The `assets` property
+in your configuration is missing the required `directory` property".
+
+### Local Browser Run
+
 If the `BROWSER` binding doesn't work in local dev, point it at the real
 Browser Run service: add `"remote": true` to the `browser` block in
 `wrangler.jsonc` and run `bunx wrangler login` first.
