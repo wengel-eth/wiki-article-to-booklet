@@ -168,10 +168,13 @@ function formatDate(ms: number) {
         <option v-for="id in PAPER_IDS" :key="id" :value="id">{{ PAPER_SIZES[id].label }}</option>
       </select>
 
-      <label class="check">
-        <input v-model="references" type="checkbox" :disabled="busy" />
-        Include references
-      </label>
+      <fieldset class="options" :disabled="busy">
+        <legend>Options</legend>
+        <label class="check">
+          <input v-model="references" type="checkbox" />
+          Include references
+        </label>
+      </fieldset>
 
       <div>
         <button type="submit" :disabled="busy">{{ busy ? "Working…" : "Make booklet" }}</button>
