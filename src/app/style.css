@@ -39,6 +39,9 @@ label { display: block; margin: 1rem 0 0.25rem; }
 
 input, select, button { font: inherit; color: inherit; }
 
+label.check { display: flex; align-items: center; gap: 0.5rem; }
+label.check input { width: auto; margin: 0; accent-color: var(--fg); }
+
 input, select {
   box-sizing: border-box;
   width: 100%;

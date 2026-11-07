@@ -6,6 +6,7 @@ import { deleteBooklet, listBooklets, saveBooklet, type SavedBooklet } from "./s
 
 const url = ref("");
 const paper = ref<PaperId>(initialPaper());
+const references = ref(readSetting("references") !== "no");
 const busy = ref(false);
 const status = ref("");
 const error = ref("");
@@ -18,20 +19,29 @@ let timer: ReturnType<typeof setInterval> | undefined;
 
 const urlLooksWrong = computed(() => url.value.trim() !== "" && !parseArticleUrl(url.value));
 
-watch(paper, (value) => {
+watch(paper, (value) => writeSetting("paper", value));
+watch(references, (value) => writeSetting("references", value ? "yes" : "no"));
+
+function readSetting(key: string): string | null {
   try {
-    localStorage.setItem("paper", value);
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeSetting(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
   } catch {}
-});
+}
 
 onMounted(refresh);
 onBeforeUnmount(() => clearInterval(timer));
 
 function initialPaper(): PaperId {
-  try {
-    const saved = localStorage.getItem("paper");
-    if (isPaperId(saved)) return saved;
-  } catch {}
+  const saved = readSetting("paper");
+  if (isPaperId(saved)) return saved;
   const region = new Intl.Locale(navigator.language).maximize().region ?? "";
   return ["US", "CA", "MX", "PH", "CL", "CO", "VE", "GT", "CR", "PA", "DO", "SV", "NI", "PR"].includes(region)
     ? "letter"
@@ -63,7 +73,7 @@ async function submit() {
     const res = await fetch("/api/booklet", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ url: url.value.trim(), paper: paper.value }),
+      body: JSON.stringify({ url: url.value.trim(), paper: paper.value, references: references.value }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => null);
@@ -157,6 +167,11 @@ function formatDate(ms: number) {
       <select id="paper" v-model="paper" :disabled="busy">
         <option v-for="id in PAPER_IDS" :key="id" :value="id">{{ PAPER_SIZES[id].label }}</option>
       </select>
+
+      <label class="check">
+        <input v-model="references" type="checkbox" :disabled="busy" />
+        Include references
+      </label>
 
       <div>
         <button type="submit" :disabled="busy">{{ busy ? "Working…" : "Make booklet" }}</button>

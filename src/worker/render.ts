@@ -1,5 +1,6 @@
 import puppeteer, { type BrowserWorker, type Page } from "@cloudflare/puppeteer";
 import { BUILD_CONTENTS, fillContents, headingPages, REMOVE_CONTENTS } from "./contents";
+import { FONT_ORIGIN } from "./print-css";
 
 const LOAD_TIMEOUT_MS = 40_000;
 const PDF_TIMEOUT_MS = 60_000;
@@ -21,14 +22,23 @@ function allowed(url: string): boolean {
   }
 }
 
-/** Renders a print-ready HTML document to PDF using Cloudflare Browser Run. */
-export async function renderPdf(endpoint: BrowserWorker, html: string): Promise<Uint8Array> {
+/**
+ * Renders a print-ready HTML document to PDF using Cloudflare Browser Run.
+ * `assets` is the Worker's static assets binding, which serves the fonts.
+ */
+export async function renderPdf(endpoint: BrowserWorker, assets: Fetcher, html: string): Promise<Uint8Array> {
   const browser = await puppeteer.launch(endpoint);
   try {
     const page = await browser.newPage();
     await page.setRequestInterception(true);
     page.on("request", (req) => {
-      if (allowed(req.url())) req.continue();
+      const url = req.url();
+      if (url.startsWith(`${FONT_ORIGIN}/`)) {
+        serveFont(assets, url).then(
+          (body) => (body ? req.respond({ status: 200, headers: {}, contentType: "font/woff2", body }) : req.abort()),
+          () => req.abort(),
+        );
+      } else if (allowed(url)) req.continue();
       else req.abort();
     });
 
@@ -71,4 +81,19 @@ function print(page: Page): Promise<Uint8Array> {
     printBackground: true,
     timeout: PDF_TIMEOUT_MS,
   });
+}
+
+const fontCache = new Map<string, Uint8Array>();
+
+/** Fetches a font file from the Worker's static assets (kept in memory after the first time). */
+async function serveFont(assets: Fetcher, url: string): Promise<Uint8Array | null> {
+  const path = new URL(url).pathname;
+  if (!/^\/fonts\/[\w.-]+\.woff2$/.test(path)) return null;
+  const cached = fontCache.get(path);
+  if (cached) return cached;
+  const res = await assets.fetch(new Request(`https://assets.local${path}`));
+  if (!res.ok) return null;
+  const body = new Uint8Array(await res.arrayBuffer());
+  fontCache.set(path, body);
+  return body;
 }

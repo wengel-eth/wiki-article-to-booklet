@@ -39,7 +39,10 @@ IndexedDB, offer download
 - Page imposition happens in the browser, so the Worker only pays for one
   Browser Run render per booklet.
 - The rendering browser may only load from `*.wikipedia.org` and
-  `*.wikimedia.org`.
+  `*.wikimedia.org`. Fonts are requested from a placeholder host and answered
+  by the Worker from its own static assets (`public/fonts/`).
+- Images use the 2x versions Wikipedia lists in `srcset`, at the same size on
+  the page, so they print at about 200 dpi instead of 100.
 - Requests are limited per IP with the Workers rate limiting binding
   (5 a minute, set in `wrangler.jsonc`).
 
@@ -90,6 +93,7 @@ regenerate `worker-configuration.d.ts`.
 
 ## Licence
 
-Code: see [LICENSE](LICENSE). Article text comes from Wikipedia under
+Code: see [LICENSE](LICENSE). The print font is Source Serif 4, under the SIL
+Open Font License ([public/fonts/OFL.txt](public/fonts/OFL.txt)). Article text comes from Wikipedia under
 CC BY-SA 4.0; each booklet's second page says where it came from and links to
 the article history.
