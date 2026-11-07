@@ -163,3 +163,17 @@ describe("header image", () => {
     expect(lead((await make(body, small)).html)).toBeUndefined();
   });
 });
+
+test("references lose their jump-back links and keep web addresses", async () => {
+  const refs = `<!DOCTYPE html><html><head><title>X</title></head><body><section><p>Text.</p></section><section><h2>References</h2><div class="mw-references-wrap"><ol class="mw-references references">
+<li id="cite_note-1"><span class="mw-cite-backlink"><a href="./X#cite_ref-1" rel="mw:referencedBy"><span class="mw-linkback-text">↑ </span></a></span> <span class="mw-reference-text">Smith, J. <a rel="mw:ExtLink nofollow" href="https://www.lighthouses.org/history/" class="external text">"Lights of the World"</a>. <a rel="mw:WikiLink" href="./Harbour_Press">Harbour Press</a>.</span></li>
+<li id="cite_note-2"><span class="mw-cite-backlink"><span rel="mw:referencedBy"><a href="./X#cite_ref-2a"><span class="mw-linkback-text">1 </span></a><a href="./X#cite_ref-2b"><span class="mw-linkback-text">2 </span></a></span></span> <span class="mw-reference-text"><a rel="mw:ExtLink nofollow" href="http://example.com/a?b=1" class="external free">http://example.com/a?b=1</a></span></li>
+</ol></div></section></body></html>`;
+  const { html } = await makePrintable(refs, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
+  expect(html).not.toContain("mw-cite-backlink");
+  expect(html).not.toContain("mw-linkback-text");
+  expect(html).toContain('<a rel="mw:ExtLink nofollow" class="external text" data-url="lighthouses.org/history">');
+  expect(html).toContain('<a rel="mw:ExtLink nofollow" class="external free">http://example.com/a?b=1</a>');
+  expect(html).toContain('<a rel="mw:WikiLink">Harbour Press</a>');
+  expect(html).not.toContain("href=");
+});

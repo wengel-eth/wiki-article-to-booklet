@@ -38,6 +38,10 @@ const REMOVE = [
   ".Inline-Template",
   "#coordinates",
   '[role="navigation"]',
+  // In reference lists, the ↑ / "a b c" links that jump back to where a
+  // source was cited. Nowhere to jump to on paper.
+  ".mw-cite-backlink",
+  '[rel~="mw:referencedBy"]',
 ].join(", ");
 
 /**
@@ -168,6 +172,14 @@ export async function makePrintable(
     })
     .on("a[href]", {
       element(el) {
+        // External links (mostly in references) keep their address, which is
+        // printed after the link text; see print-css.ts. Bare links, whose
+        // text already is the address, don't need it twice.
+        const href = el.getAttribute("href")!;
+        const external = /^https?:\/\//i.test(href) || href.startsWith("//");
+        if (external && !(el.getAttribute("class") ?? "").split(/\s+/).includes("free")) {
+          el.setAttribute("data-url", displayUrl(href));
+        }
         el.removeAttribute("href");
       },
     })
@@ -296,6 +308,14 @@ function normaliseFile(name: string): string {
   } catch {}
   decoded = decoded.replace(/ /g, "_");
   return decoded.charAt(0).toUpperCase() + decoded.slice(1);
+}
+
+/** An address as printed: without https:// or www., and without a trailing slash. */
+export function displayUrl(href: string): string {
+  return href
+    .replace(/^(https?:)?\/\//i, "")
+    .replace(/^www\./i, "")
+    .replace(/\/$/, "");
 }
 
 /** The URL with the highest density (2x, 1.5x, ...) in a srcset. */

@@ -208,6 +208,12 @@ ol.references {
 .mw-references-wrap ol.references, .reflist ol.references { font-size: inherit; }
 .references li { text-align: left; hyphens: none; overflow-wrap: anywhere; margin-bottom: 0.6mm; break-inside: avoid; }
 .reflist .mw-references-wrap { columns: auto !important; }
+/* Web addresses, printed after the link text since nothing on paper is clickable. */
+a[data-url]::after {
+  content: " (" attr(data-url) ")";
+  overflow-wrap: anywhere;
+  hyphens: none;
+}
 
 /* Black and white, to save colour ink. Chrome keeps filtered images at print
    resolution. Text, background and border colours are turned grey by a script
