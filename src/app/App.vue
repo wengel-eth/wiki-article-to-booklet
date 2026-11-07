@@ -178,7 +178,7 @@ function formatDate(ms: number) {
         </label>
         <label class="check">
           <input v-model="grayscale" type="checkbox" />
-          Black and white images (uses less colour ink)
+          Black and white (uses less colour ink)
         </label>
       </fieldset>
 

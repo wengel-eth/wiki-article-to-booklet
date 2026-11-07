@@ -1,5 +1,6 @@
 import puppeteer, { type BrowserWorker, type Page } from "@cloudflare/puppeteer";
 import { BUILD_CONTENTS, fillContents, headingPages, REMOVE_CONTENTS } from "./contents";
+import { GRAYSCALE_COLORS } from "./grayscale";
 import { FONT_ORIGIN } from "./print-css";
 
 const LOAD_TIMEOUT_MS = 40_000;
@@ -49,6 +50,7 @@ export async function renderPdf(endpoint: BrowserWorker, assets: Fetcher, html: 
       if (!(err instanceof Error && err.name === "TimeoutError")) throw err;
     }
 
+    await page.evaluate(GRAYSCALE_COLORS);
     const entries = (await page.evaluate(BUILD_CONTENTS)) as number;
     let pdf = await print(page);
     if (entries === 0) return pdf;

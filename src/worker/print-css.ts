@@ -171,8 +171,9 @@ ol.references {
 .references li { text-align: left; hyphens: none; overflow-wrap: anywhere; margin-bottom: 0.6mm; break-inside: avoid; }
 .reflist .mw-references-wrap { columns: auto !important; }
 
-/* Black and white images, to save colour ink. Chrome keeps filtered images at
-   print resolution. */
+/* Black and white, to save colour ink. Chrome keeps filtered images at print
+   resolution. Text, background and border colours are turned grey by a script
+   in the page; see grayscale.ts. */
 body.grayscale img, body.grayscale svg, body.grayscale video { filter: grayscale(1); }
 
 /* With references left out, hide sections that only held them. */

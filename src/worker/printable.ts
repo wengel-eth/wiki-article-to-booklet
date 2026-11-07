@@ -47,7 +47,7 @@ export interface PrintOptions {
   paper: PaperId;
   /** Keep footnote markers and reference lists. */
   references: boolean;
-  /** Print images in black and white. */
+  /** Print in black and white: images, text, tables and borders. */
   grayscale: boolean;
 }
 
