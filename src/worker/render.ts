@@ -1,4 +1,5 @@
-import puppeteer, { type BrowserWorker } from "@cloudflare/puppeteer";
+import puppeteer, { type BrowserWorker, type Page } from "@cloudflare/puppeteer";
+import { BUILD_CONTENTS, fillContents, headingPages, REMOVE_CONTENTS } from "./contents";
 
 const LOAD_TIMEOUT_MS = 40_000;
 const PDF_TIMEOUT_MS = 60_000;
@@ -38,12 +39,36 @@ export async function renderPdf(endpoint: BrowserWorker, html: string): Promise<
       if (!(err instanceof Error && err.name === "TimeoutError")) throw err;
     }
 
-    return await page.pdf({
-      preferCSSPageSize: true,
-      printBackground: true,
-      timeout: PDF_TIMEOUT_MS,
-    });
+    const entries = (await page.evaluate(BUILD_CONTENTS)) as number;
+    let pdf = await print(page);
+    if (entries === 0) return pdf;
+
+    // Print, read where each heading landed, fill in the numbers, print again.
+    // The second pass normally confirms nothing moved; stop there.
+    try {
+      for (let pass = 0; pass < 2; pass++) {
+        const pages = await headingPages(pdf);
+        if (Object.keys(pages).length < entries) throw new Error("Missing heading destinations");
+        const changed = (await page.evaluate(fillContents(pages))) as boolean;
+        if (!changed) break;
+        pdf = await print(page);
+      }
+    } catch (err) {
+      // Better no contents page than one with missing or wrong numbers.
+      console.error("Contents page dropped:", err);
+      await page.evaluate(REMOVE_CONTENTS);
+      pdf = await print(page);
+    }
+    return pdf;
   } finally {
     await browser.close();
   }
+}
+
+function print(page: Page): Promise<Uint8Array> {
+  return page.pdf({
+    preferCSSPageSize: true,
+    printBackground: true,
+    timeout: PDF_TIMEOUT_MS,
+  });
 }

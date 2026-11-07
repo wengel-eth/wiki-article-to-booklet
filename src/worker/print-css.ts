@@ -63,6 +63,16 @@ a { color: inherit; text-decoration: none; }
 }
 .booklet-colophon p { text-align: left; hyphens: none; margin: 0 0 2mm; overflow-wrap: anywhere; }
 
+/* Contents */
+.booklet-contents { break-after: page; }
+.booklet-contents-title { font-size: 13pt; margin: 0 0 4mm; text-align: left; }
+.booklet-contents ol { list-style: none; padding: 0; margin: 0; }
+.booklet-contents li { margin: 0 0 1.2mm; break-inside: avoid; }
+.booklet-contents li.sub { padding-left: 5mm; font-size: 8.5pt; }
+.booklet-contents a { display: flex; align-items: baseline; gap: 3mm; }
+.booklet-contents .t { flex: 1; }
+.booklet-contents .n { flex: none; width: 8mm; text-align: right; font-variant-numeric: tabular-nums; }
+
 /* Headings */
 h1, h2, h3, h4, h5, h6 { font-weight: normal; break-after: avoid; line-height: 1.25; }
 h2 { font-size: 13pt; margin: 6mm 0 2mm; border-bottom: 0.4pt solid #000; padding-bottom: 0.5mm; }
