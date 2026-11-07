@@ -14,7 +14,7 @@ const PARSOID = `<!DOCTYPE html>
 <div role="note" class="hatnote">For the album, see …</div>
 <table class="infobox"><tr><th>Origin</th><td>Sydney</td></tr></table>
 <p data-mw='{"x":1}'>AC/DC are a rock band.<sup class="noprint Inline-Template">[citation needed]</sup></p>
-<figure typeof="mw:File/Thumb"><a href="./File:X.jpg"><img src="//upload.wikimedia.org/x.jpg" loading="lazy" width="250" height="200"/></a><figcaption>Band</figcaption></figure>
+<figure typeof="mw:File/Thumb"><a href="./File:X.jpg"><img src="//upload.wikimedia.org/x.jpg" srcset="//upload.wikimedia.org/x2.jpg 2x, /w/y.png 1.5x" loading="lazy" width="250" height="200"/></a><figcaption>Band</figcaption></figure>
 </section>
 <section data-mw-section-id="5"><h2 id="External_links">External links</h2><div role="navigation" class="navbox">nav</div></section>
 </body></html>`;
@@ -26,8 +26,11 @@ test("makePrintable cleans up and adds front matter", async () => {
   expect(out.revision).toBe("1234567");
 
   const html = out.html;
-  expect(html).toContain('<base href="https://en.wikipedia.org/wiki/">');
-  expect(html).not.toContain("//en.wikipedia.org/wiki/\"/>");
+  // No <base>: image URLs are made absolute instead, and links are dropped.
+  expect(html).not.toContain("<base");
+  expect(html).toContain('src="https://upload.wikimedia.org/x.jpg"');
+  expect(html).toContain('srcset="https://upload.wikimedia.org/x2.jpg 2x, https://en.wikipedia.org/w/y.png 1.5x"');
+  expect(html).not.toContain('href="./File:X.jpg"');
   expect(html).not.toContain("<script");
   expect(html).not.toContain("load.php");
   expect(html).not.toContain("citation needed");

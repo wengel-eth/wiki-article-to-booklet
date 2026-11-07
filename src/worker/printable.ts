@@ -73,11 +73,37 @@ export async function makePrintable(
     })
     .on("head", {
       element(el) {
-        el.prepend(
-          `<meta charset="utf-8"><base href="https://${lang}.wikipedia.org/wiki/">`,
-          { html: true },
-        );
+        el.prepend(`<meta charset="utf-8">`, { html: true });
         el.append(`<style>${printCss(paper)}</style>`, { html: true });
+      },
+    })
+    // There's no <base> (it would break the contents page's #links), so make
+    // image URLs absolute. Links aren't clickable on paper; drop them.
+    .on("img[src], source[src]", {
+      element(el) {
+        el.setAttribute("src", absolute(el.getAttribute("src")!, lang));
+      },
+    })
+    .on("img[srcset], source[srcset]", {
+      element(el) {
+        const srcset = el.getAttribute("srcset")!
+          .split(",")
+          .map((entry) => {
+            const [url, ...descriptor] = entry.trim().split(/\s+/);
+            return [absolute(url, lang), ...descriptor].join(" ");
+          })
+          .join(", ");
+        el.setAttribute("srcset", srcset);
+      },
+    })
+    .on("video[poster]", {
+      element(el) {
+        el.setAttribute("poster", absolute(el.getAttribute("poster")!, lang));
+      },
+    })
+    .on("a[href]", {
+      element(el) {
+        el.removeAttribute("href");
       },
     })
     .on("[data-mw]", {
@@ -125,6 +151,16 @@ function frontMatter(title: string, ref: ArticleRef, revision: string | null, no
   Images may be under other licences; see each file's page on Wikipedia.
   Authors are listed in the article's history: ${escapeHtml(history)}</p>
 </aside>`;
+}
+
+function absolute(url: string, lang: string): string {
+  if (url.startsWith("//")) return `https:${url}`;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return url;
+  try {
+    return new URL(url, `https://${lang}.wikipedia.org/wiki/`).href;
+  } catch {
+    return url;
+  }
 }
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'" };
