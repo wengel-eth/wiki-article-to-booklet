@@ -1,14 +1,24 @@
 import { bookletPageSize, type PaperId } from "../shared/paper";
 import { FONT_FACES } from "./fonts";
+import { TABLE_CSS } from "./tables";
 
 /** Fonts are requested from this made-up host and answered by the Worker. */
 export const FONT_ORIGIN = "https://fonts.booklet.invalid";
 
-const SERIF = `"Source Serif 4", "Noto Serif", "DejaVu Serif", "Liberation Serif", Georgia, serif`;
+const SERIF = `"Literata", "Noto Serif", "DejaVu Serif", "Liberation Serif", Georgia, serif`;
 
 // Margins in mm. The inner margin (along the fold) is a little wider than the
 // outer one so text doesn't disappear into the spine.
 const MARGIN = { top: 14, bottom: 16, inner: 15, outer: 12 };
+
+/** The text area of a booklet page, in millimetres. */
+export function contentBox(paper: PaperId): { width: number; height: number } {
+  const page = bookletPageSize(paper);
+  return {
+    width: page.width - MARGIN.inner - MARGIN.outer,
+    height: page.height - MARGIN.top - MARGIN.bottom,
+  };
+}
 
 export interface PrintCssOptions {
   paper: PaperId;
@@ -20,7 +30,7 @@ export function printCss({ paper, title }: PrintCssOptions): string {
   const page = bookletPageSize(paper);
   const fontFaces = FONT_FACES.map(
     (f) => `@font-face {
-  font-family: "Source Serif 4";
+  font-family: "Literata";
   font-style: ${f.style};
   font-weight: ${f.weight};
   src: url("${FONT_ORIGIN}/fonts/${f.file}") format("woff2");
@@ -117,29 +127,40 @@ a { color: inherit; text-decoration: none; }
 
 /* Headings */
 h1, h2, h3, h4, h5, h6 { font-weight: normal; break-after: avoid; line-height: 1.25; }
-h2 { font-size: 13pt; margin: 6mm 0 2mm; border-bottom: 0.4pt solid #000; padding-bottom: 0.5mm; }
+h2 { clear: both; font-size: 13pt; margin: 6mm 0 2mm; border-bottom: 0.4pt solid #000; padding-bottom: 0.5mm; }
 h3 { font-size: 11pt; margin: 4mm 0 1.5mm; font-style: italic; }
 h4, h5, h6 { font-size: 9.5pt; margin: 3mm 0 1mm; font-weight: bold; }
 p { margin: 0 0 2mm; }
 
-/* Media */
+/* Media
+   Images keep their on-screen size (from the width/height attributes) but use
+   the high-resolution file; see printable.ts.
+   To save space, figures sit beside the text, floated right at under half the
+   column width with text wrapping round them. Wide images (panoramas, maps,
+   diagrams), which printable.ts marks with data-wide, keep the full width so
+   their detail stays readable. */
 img { max-width: 100%; height: auto; }
-figure, .thumb {
-  margin: 3mm 0;
-  break-inside: avoid;
-  text-align: center;
+figure, .thumb { margin: 0 0 2.5mm; break-inside: avoid; }
+figure:not(:has(img[data-wide])) {
+  float: right;
+  clear: right;
+  width: fit-content;
+  max-width: 46%;
+  margin: 0.8mm 0 2mm 4mm;
 }
-/* Images keep their on-screen size (from the width/height attributes) but use
-   the high-resolution file; see printable.ts. */
+figure:has(img[data-wide]) { margin: 3mm 0; text-align: center; }
 figure img, .thumb img {
+  display: block;
+  margin: 0 auto;
   height: auto;
   max-width: 100%;
-  max-height: ${Math.round(page.height * 0.45)}mm;
+  max-height: ${Math.round(page.height * 0.4)}mm;
   object-fit: contain;
 }
-figcaption, .thumbcaption { font-size: 7.5pt; line-height: 1.35; text-align: left; margin-top: 1mm; }
-ul.gallery { list-style: none; padding: 0; margin: 3mm 0; display: flex; flex-wrap: wrap; gap: 3mm; justify-content: center; }
-ul.gallery li { break-inside: avoid; max-width: 45%; }
+figcaption, .thumbcaption { font-size: 7pt; line-height: 1.3; text-align: left; hyphens: auto; margin-top: 1mm; }
+.infobox img { max-height: ${Math.round(page.height * 0.22)}mm; object-fit: contain; }
+ul.gallery { list-style: none; padding: 0; margin: 3mm 0; display: flex; flex-wrap: wrap; gap: 2mm; justify-content: center; clear: both; }
+ul.gallery li { break-inside: avoid; max-width: 31%; font-size: 7pt; line-height: 1.3; }
 .mwe-math-mathml-a11y { display: none; }
 
 /* Tables and infoboxes */
@@ -176,6 +197,14 @@ ol.references {
    in the page; see grayscale.ts. */
 body.grayscale img, body.grayscale svg, body.grayscale video { filter: grayscale(1); }
 
+/* References and notes start on a new page. Where several reference
+   sections follow each other (Notes, then References), or are nested in one
+   section, only the first starts a new page. */
+section:has(.mw-references-wrap, .reflist):not(
+  section:has(.mw-references-wrap, .reflist) section,
+  section:has(.mw-references-wrap, .reflist) + section
+) { break-before: page; }
+
 /* With references left out, hide sections that only held them. */
 body.no-references section:not(:has(> :not(h2, h3, .mw-heading, style, link, meta))) { display: none; }
 
@@ -185,6 +214,9 @@ dl { margin: 0 0 2mm; }
 blockquote { margin: 2mm 5mm; font-size: 9pt; }
 pre, code { font-family: "Noto Sans Mono", "DejaVu Sans Mono", monospace; font-size: 0.85em; }
 pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Wide and long tables; see tables.ts */
+${TABLE_CSS}
 
 /* Sections that don't belong on paper */
 section:has(> h2#External_links, > .mw-heading > h2#External_links),

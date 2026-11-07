@@ -43,6 +43,15 @@ IndexedDB, offer download
   by the Worker from its own static assets (`public/fonts/`).
 - Images use the 2x versions Wikipedia lists in `srcset`, at the same size on
   the page, so they print at about 200 dpi instead of 100.
+- Figures sit beside the text at under half the column width; wide images
+  (panoramas, maps, diagrams) keep the full width. References and notes start
+  on a new page.
+- Tables that don't fit the column are shrunk (to no less than 70%); wider
+  ones go sideways on pages of their own, split across pages if needed.
+  Header rows repeat on every page a table runs onto.
+- The API streams progress (fetching, loading images, printing, ...) before
+  the PDF itself, so the page can show a real progress bar. The format is
+  described in `src/shared/progress.ts`.
 - Requests are limited per IP with the Workers rate limiting binding
   (5 a minute, set in `wrangler.jsonc`).
 
@@ -93,7 +102,7 @@ regenerate `worker-configuration.d.ts`.
 
 ## Licence
 
-Code: see [LICENSE](LICENSE). The print font is Source Serif 4, under the SIL
+Code: see [LICENSE](LICENSE). The print font is Literata, under the SIL
 Open Font License ([public/fonts/OFL.txt](public/fonts/OFL.txt)). Article text comes from Wikipedia under
 CC BY-SA 4.0; each booklet's second page says where it came from and links to
 the article history.

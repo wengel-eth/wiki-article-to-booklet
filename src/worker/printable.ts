@@ -51,6 +51,9 @@ export interface PrintOptions {
   grayscale: boolean;
 }
 
+/** Images at least this many times wider than tall are printed full width. */
+const WIDE_RATIO = 1.6;
+
 // Footnote markers and reference lists, for when references are left out.
 const REFERENCES = ["sup.mw-ref", "sup.reference", ".mw-references-wrap", ".reflist"].join(", ");
 
@@ -106,6 +109,10 @@ export async function makePrintable(
         const best = srcset ? largestCandidate(srcset) : null;
         const src = best ?? el.getAttribute("src");
         if (src) el.setAttribute("src", absolute(src, lang));
+        // Wide images keep the full column width; see print-css.ts.
+        const width = Number(el.getAttribute("width"));
+        const height = Number(el.getAttribute("height"));
+        if (width > 0 && height > 0 && width / height >= WIDE_RATIO) el.setAttribute("data-wide", "");
         el.removeAttribute("srcset");
         el.removeAttribute("loading");
         el.removeAttribute("decoding");

@@ -57,7 +57,7 @@ test("makePrintable cleans up and adds front matter", async () => {
   expect(html).toContain('content: "AC/DC & friends";');
 
   // Fonts, and references kept
-  expect(html).toContain('font-family: "Source Serif 4"');
+  expect(html).toContain('font-family: "Literata"');
   expect(html).toContain('class="mw-ref reference"');
   expect(html).toContain('<div class="mw-references-wrap">');
   expect(html).toContain('<body lang="en" dir="ltr" class="mw-content-ltr">');
@@ -90,4 +90,21 @@ test("running heads escape quotes and shorten long titles", async () => {
   const out = await makePrintable(long, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
   expect(out.html).toContain('content: "The \\22 Long\\22  Title xxxx');
   expect(out.html).toMatch(/xxx\\2026 ";/);
+});
+
+test("wide images are marked to keep the full width", async () => {
+  const src = PARSOID.replace(
+    "</section>\n<section data-mw-section-id=\"4\">",
+    `<figure><img src="//upload.wikimedia.org/pano.jpg" width="500" height="200"/></figure></section>\n<section data-mw-section-id="4">`,
+  );
+  const { html } = await makePrintable(src, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
+  expect(html).toContain('<img src="https://upload.wikimedia.org/pano.jpg" width="500" height="200" data-wide="" />');
+  expect(html).toContain('<img src="https://upload.wikimedia.org/x2.jpg" width="250" height="200" />');
+});
+
+test("fitTables embeds the page layout and its stylesheet is in the print CSS", async () => {
+  const { fitTables, TABLE_CSS } = await import("../src/worker/tables");
+  expect(fitTables({ columnPx: 425, pageHeightPx: 694 })).toContain('({"columnPx":425,"pageHeightPx":694}, 0.7, 1.3)');
+  const { html } = await makePrintable(PARSOID, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
+  expect(html).toContain(TABLE_CSS.trim().split("\n")[0]);
 });
