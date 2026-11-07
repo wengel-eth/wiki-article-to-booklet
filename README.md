@@ -49,6 +49,9 @@ IndexedDB, offer download
 - Tables that don't fit the column are shrunk (to no less than 70%); wider
   ones go sideways on pages of their own, split across pages if needed.
   Header rows repeat on every page a table runs onto.
+- The API streams progress (fetching, loading images, printing, ...) before
+  the PDF itself, so the page can show a real progress bar. The format is
+  described in `src/shared/progress.ts`.
 - Requests are limited per IP with the Workers rate limiting binding
   (5 a minute, set in `wrangler.jsonc`).
 

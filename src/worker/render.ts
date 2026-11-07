@@ -1,5 +1,6 @@
 import puppeteer, { type BrowserWorker, type Page } from "@cloudflare/puppeteer";
 import type { PaperId } from "../shared/paper";
+import type { ServerEvent } from "../shared/progress";
 import { BUILD_CONTENTS, fillContents, headingPages, REMOVE_CONTENTS } from "./contents";
 import { GRAYSCALE_COLORS } from "./grayscale";
 import { contentBox, FONT_ORIGIN } from "./print-css";
@@ -36,6 +37,7 @@ export async function renderPdf(
   assets: Fetcher,
   html: string,
   paper: PaperId,
+  progress: (event: ServerEvent) => void = () => {},
 ): Promise<Uint8Array> {
   const box = contentBox(paper);
   const layout = {
@@ -44,6 +46,7 @@ export async function renderPdf(
     pageHeightPx: Math.floor((box.height - 2) * PX_PER_MM),
   };
 
+  progress({ stage: "launching" });
   const browser = await puppeteer.launch(endpoint);
   try {
     const page = await browser.newPage();
@@ -63,6 +66,18 @@ export async function renderPdf(
       else req.abort();
     });
 
+    // Count images as they arrive, for the progress bar.
+    const total = html.match(/<img\b/g)?.length ?? 0;
+    let done = 0;
+    const counted = (req: { resourceType(): string }) => {
+      if (req.resourceType() !== "image" || done >= total) return;
+      done++;
+      progress({ stage: "loading", done, total });
+    };
+    page.on("requestfinished", counted);
+    page.on("requestfailed", counted);
+
+    progress({ stage: "loading", done: 0, total });
     try {
       await page.setContent(html, { waitUntil: "networkidle0", timeout: LOAD_TIMEOUT_MS });
     } catch (err) {
@@ -70,9 +85,12 @@ export async function renderPdf(
       if (!(err instanceof Error && err.name === "TimeoutError")) throw err;
     }
 
+    progress({ stage: "layout" });
     await page.evaluate(GRAYSCALE_COLORS);
     await page.evaluate(fitTables(layout));
     const entries = (await page.evaluate(BUILD_CONTENTS)) as number;
+    let passes = 1;
+    progress({ stage: "printing", pass: passes });
     let pdf = await print(page);
     if (entries === 0) return pdf;
 
@@ -84,12 +102,14 @@ export async function renderPdf(
         if (Object.keys(pages).length < entries) throw new Error("Missing heading destinations");
         const changed = (await page.evaluate(fillContents(pages))) as boolean;
         if (!changed) break;
+        progress({ stage: "printing", pass: ++passes });
         pdf = await print(page);
       }
     } catch (err) {
       // Better no contents page than one with missing or wrong numbers.
       console.error("Contents page dropped:", err);
       await page.evaluate(REMOVE_CONTENTS);
+      progress({ stage: "printing", pass: ++passes });
       pdf = await print(page);
     }
     return pdf;
