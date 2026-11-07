@@ -47,7 +47,8 @@ test("makePrintable cleans up and adds front matter", async () => {
   expect(html).toContain("<h1>AC/DC &#38; friends</h1>");
   expect(html).toContain("revision 1234567");
   expect(html).toContain("https://en.wikipedia.org/w/index.php?oldid=1234567");
-  expect(html).toContain("Retrieved 7 November 2026.");
+  expect(html).toContain("Generated 7 November 2026 at 12:00 UTC");
+  expect(html).toContain('<svg class="booklet-qr"');
   expect(html).toContain("Creative Commons Attribution-ShareAlike 4.0");
 
   // Booklet page for A4 paper is A5
@@ -107,4 +108,21 @@ test("fitTables embeds the page layout and its stylesheet is in the print CSS", 
   expect(fitTables({ columnPx: 425, pageHeightPx: 694 })).toContain('({"columnPx":425,"pageHeightPx":694}, 0.7, 1.3)');
   const { html } = await makePrintable(PARSOID, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
   expect(html).toContain(TABLE_CSS.trim().split("\n")[0]);
+});
+
+test("generatedAt uses the reader's time zone, falling back to UTC", async () => {
+  const { generatedAt } = await import("../src/worker/printable");
+  const when = new Date("2026-11-07T19:32:00Z");
+  expect(generatedAt(when, "America/Toronto")).toBe("7 November 2026 at 14:32 EST");
+  expect(generatedAt(when, "Europe/Paris")).toBe("7 November 2026 at 20:32 GMT+1");
+  expect(generatedAt(when, "Not/AZone")).toBe("7 November 2026 at 19:32 UTC");
+  expect(generatedAt(when)).toBe("7 November 2026 at 19:32 UTC");
+});
+
+test("QR codes grow for long links so the squares stay printable", async () => {
+  const { qrSvg } = await import("../src/worker/qr");
+  expect(qrSvg("https://en.wikipedia.org/wiki/Moon", 18)).toContain('width="18mm"');
+  const long = `https://zh.wikipedia.org/wiki/${encodeURIComponent("中華人民共和國香港特別行政區立法會選舉")}`;
+  const width = Number(qrSvg(long, 18).match(/width="(\d+)mm"/)![1]);
+  expect(width).toBeGreaterThan(18);
 });

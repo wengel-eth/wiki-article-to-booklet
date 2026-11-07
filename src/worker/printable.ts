@@ -1,5 +1,6 @@
 import type { PaperId } from "../shared/paper";
 import { printCss } from "./print-css";
+import { qrSvg } from "./qr";
 import { articleUrl, type ArticleRef } from "./wikipedia";
 
 export interface PrintableArticle {
@@ -49,6 +50,8 @@ export interface PrintOptions {
   references: boolean;
   /** Print in black and white: images, text, tables and borders. */
   grayscale: boolean;
+  /** IANA time zone for the "generated" time, from the reader's browser. UTC if missing or unknown. */
+  timeZone?: string;
 }
 
 /** Images at least this many times wider than tall are printed full width. */
@@ -60,7 +63,7 @@ const REFERENCES = ["sup.mw-ref", "sup.reference", ".mw-references-wrap", ".refl
 export async function makePrintable(
   source: string,
   ref: ArticleRef,
-  { paper, references, grayscale }: PrintOptions,
+  { paper, references, grayscale, timeZone }: PrintOptions,
   now = new Date(),
 ): Promise<PrintableArticle> {
   let rawTitle = "";
@@ -156,7 +159,7 @@ export async function makePrintable(
         if (!references) classes.push("no-references");
         if (grayscale) classes.push("grayscale");
         el.setAttribute("class", classes.join(" ").trim());
-        el.prepend(frontMatter(title(), ref, revision, now), { html: true });
+        el.prepend(frontMatter(title(), ref, revision, generatedAt(now, timeZone)), { html: true });
       },
     });
 
@@ -184,12 +187,28 @@ export function largestCandidate(srcset: string): string | null {
   return best?.url ?? null;
 }
 
-function frontMatter(title: string, ref: ArticleRef, revision: string | null, now: Date): string {
+/** "7 November 2026 at 14:32 EST", in the given time zone (UTC if it isn't a real one). */
+export function generatedAt(now: Date, timeZone = "UTC"): string {
+  let zone = timeZone;
+  try {
+    new Intl.DateTimeFormat("en-GB", { timeZone: zone });
+  } catch {
+    zone = "UTC";
+  }
+  const date = now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: zone });
+  const time = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: zone });
+  const name =
+    new Intl.DateTimeFormat("en-US", { timeZone: zone, timeZoneName: "short" })
+      .formatToParts(now)
+      .find((p) => p.type === "timeZoneName")?.value ?? zone;
+  return `${date} at ${time} ${name}`;
+}
+
+function frontMatter(title: string, ref: ArticleRef, revision: string | null, generated: string): string {
   const url = articleUrl({ ...ref, title });
   const host = `https://${ref.lang}.wikipedia.org`;
   const permalink = revision ? `${host}/w/index.php?oldid=${revision}` : null;
   const history = `${host}/w/index.php?title=${encodeURIComponent(title.replace(/ /g, "_"))}&action=history`;
-  const date = now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
   return `
 <header class="booklet-cover">
@@ -197,10 +216,15 @@ function frontMatter(title: string, ref: ArticleRef, revision: string | null, no
   <p>From Wikipedia, the free encyclopedia</p>
 </header>
 <aside class="booklet-colophon">
+  <div class="booklet-qr-block">
+    ${qrSvg(url, 18)}
+    <div>
+      <p>${escapeHtml(url)}</p>
+      <p>Generated ${escapeHtml(generated)}</p>
+    </div>
+  </div>
   <p><strong>${escapeHtml(title)}</strong></p>
-  <p>Source: ${escapeHtml(url)}</p>
   ${permalink ? `<p>This copy: revision ${revision}, ${escapeHtml(permalink)}</p>` : ""}
-  <p>Retrieved ${escapeHtml(date)}.</p>
   <p>Text is available under the Creative Commons Attribution-ShareAlike 4.0 License
   (https://creativecommons.org/licenses/by-sa/4.0/); additional terms may apply.
   Images may be under other licences; see each file's page on Wikipedia.

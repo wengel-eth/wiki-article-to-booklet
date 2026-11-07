@@ -32,6 +32,8 @@ const booklets = ref<SavedBooklet[]>([]);
 const latestId = ref<string | null>(null);
 const storageBroken = ref(false);
 const now = ref(Date.now());
+const confirmDialog = ref<HTMLDialogElement | null>(null);
+const toDelete = ref<SavedBooklet | null>(null);
 
 let ticker: ReturnType<typeof setInterval> | undefined;
 
@@ -136,6 +138,7 @@ async function run(job: Job) {
         paper: job.paper,
         references: job.references,
         grayscale: job.grayscale,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       }),
     });
     if (!res.ok) {
@@ -202,7 +205,16 @@ function download(b: SavedBooklet) {
   setTimeout(() => URL.revokeObjectURL(href), 10_000);
 }
 
-async function remove(b: SavedBooklet) {
+/** Asks before deleting: booklets live only in this browser, so it can't be undone. */
+function askToRemove(b: SavedBooklet) {
+  toDelete.value = b;
+  confirmDialog.value?.showModal();
+}
+
+async function onConfirmClose() {
+  const b = toDelete.value;
+  toDelete.value = null;
+  if (!b || confirmDialog.value?.returnValue !== "delete") return;
   try {
     await deleteBooklet(b.id);
   } catch {}
@@ -308,11 +320,22 @@ function formatDate(ms: number) {
           </span>
           <span class="actions">
             <button type="button" @click="download(b)">Download</button>
-            <button type="button" class="plain" @click="remove(b)">Delete</button>
+            <button type="button" class="plain" @click="askToRemove(b)">Delete</button>
           </span>
         </li>
       </ul>
     </section>
+
+    <dialog ref="confirmDialog" class="confirm" aria-labelledby="confirm-title" @close="onConfirmClose">
+      <form method="dialog">
+        <p id="confirm-title">Delete “{{ toDelete?.title }}”?</p>
+        <p class="note">It's only saved in this browser, so it can't be recovered. You can always make it again.</p>
+        <div class="confirm-actions">
+          <button value="delete">Delete</button>
+          <button value="cancel" class="plain" autofocus>Cancel</button>
+        </div>
+      </form>
+    </dialog>
 
     <section>
       <h2>Printing</h2>

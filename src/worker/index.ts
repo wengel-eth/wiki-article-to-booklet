@@ -14,7 +14,7 @@ app.post("/api/booklet", async (c) => {
   if (!success) throw new UserError(429, "Too many booklets in a short time. Wait a minute and try again.");
 
   const body = await c.req
-    .json<{ url?: unknown; paper?: unknown; references?: unknown; grayscale?: unknown }>()
+    .json<{ url?: unknown; paper?: unknown; references?: unknown; grayscale?: unknown; timeZone?: unknown }>()
     .catch(() => ({}) as Record<string, unknown>);
   const ref = typeof body.url === "string" ? parseArticleUrl(body.url) : null;
   if (!ref) throw new UserError(400, "That doesn't look like a link to a Wikipedia article.");
@@ -22,6 +22,7 @@ app.post("/api/booklet", async (c) => {
   if (!isPaperId(paper)) throw new UserError(400, "Pick a paper size.");
   const references = body.references !== false;
   const grayscale = body.grayscale === true;
+  const timeZone = typeof body.timeZone === "string" ? body.timeZone.slice(0, 64) : undefined;
 
   // From here on the answer is a stream of progress events, then the PDF.
   // See src/shared/progress.ts.
@@ -36,7 +37,7 @@ app.post("/api/booklet", async (c) => {
       send({ stage: "fetching" });
       const source = await fetchArticleHtml(ref);
       send({ stage: "preparing" });
-      const article = await makePrintable(source, ref, { paper, references, grayscale });
+      const article = await makePrintable(source, ref, { paper, references, grayscale, timeZone });
       const pdf = await renderPdf(c.env.BROWSER, c.env.ASSETS, article.html, paper, send);
       send({ stage: "pdf", bytes: pdf.byteLength, title: article.title });
       await writer.write(pdf).catch(() => {});
