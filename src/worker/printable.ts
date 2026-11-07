@@ -43,17 +43,30 @@ const REMOVE = [
  * Turns Parsoid HTML for an article into a standalone document ready to print
  * as booklet pages: junk removed, a cover and colophon added, print CSS applied.
  */
+export interface PrintOptions {
+  paper: PaperId;
+  /** Keep footnote markers and reference lists. */
+  references: boolean;
+  /** Print in black and white: images, text, tables and borders. */
+  grayscale: boolean;
+}
+
+// Footnote markers and reference lists, for when references are left out.
+const REFERENCES = ["sup.mw-ref", "sup.reference", ".mw-references-wrap", ".reflist"].join(", ");
+
 export async function makePrintable(
   source: string,
   ref: ArticleRef,
-  paper: PaperId,
+  { paper, references, grayscale }: PrintOptions,
   now = new Date(),
 ): Promise<PrintableArticle> {
   let rawTitle = "";
   let revision: string | null = null;
   const lang = ref.lang;
 
-  const rewriter = new HTMLRewriter()
+  const title = () => decodeEntities(rawTitle).trim() || ref.title;
+
+  let rewriter = new HTMLRewriter()
     .on("html", {
       element(el) {
         // about="https://en.wikipedia.org/wiki/Special:Redirect/revision/123"
@@ -74,17 +87,36 @@ export async function makePrintable(
     .on("head", {
       element(el) {
         el.prepend(`<meta charset="utf-8">`, { html: true });
-        el.append(`<style>${printCss(paper)}</style>`, { html: true });
+        // At </head> the title has been read, and the running head needs it.
+        el.onEndTag((end) => {
+          end.before(`<style>${printCss({ paper, title: title() })}</style>`, { html: true });
+        });
       },
     })
     // There's no <base> (it would break the contents page's #links), so make
     // image URLs absolute. Links aren't clickable on paper; drop them.
-    .on("img[src], source[src]", {
+    //
+    // Thumbnails are about 250px wide, roughly 100 dpi on paper. Wikipedia
+    // also lists 1.5x and 2x versions in srcset, which Chrome ignores when
+    // printing, so use the largest as the image itself. The width/height
+    // attributes keep it at the same size on the page.
+    .on("img", {
+      element(el) {
+        const srcset = el.getAttribute("srcset");
+        const best = srcset ? largestCandidate(srcset) : null;
+        const src = best ?? el.getAttribute("src");
+        if (src) el.setAttribute("src", absolute(src, lang));
+        el.removeAttribute("srcset");
+        el.removeAttribute("loading");
+        el.removeAttribute("decoding");
+      },
+    })
+    .on("source[src]", {
       element(el) {
         el.setAttribute("src", absolute(el.getAttribute("src")!, lang));
       },
     })
-    .on("img[srcset], source[srcset]", {
+    .on("source[srcset]", {
       element(el) {
         const srcset = el.getAttribute("srcset")!
           .split(",")
@@ -111,22 +143,38 @@ export async function makePrintable(
         el.removeAttribute("data-mw");
       },
     })
-    .on("img", {
-      element(el) {
-        el.removeAttribute("loading");
-        el.removeAttribute("decoding");
-      },
-    })
     .on("body", {
       element(el) {
-        const title = decodeEntities(rawTitle).trim() || ref.title;
-        el.prepend(frontMatter(title, ref, revision, now), { html: true });
+        const classes = [el.getAttribute("class") ?? ""];
+        if (!references) classes.push("no-references");
+        if (grayscale) classes.push("grayscale");
+        el.setAttribute("class", classes.join(" ").trim());
+        el.prepend(frontMatter(title(), ref, revision, now), { html: true });
       },
     });
 
+  if (!references) {
+    rewriter = rewriter.on(REFERENCES, {
+      element(el) {
+        el.remove();
+      },
+    });
+  }
+
   const html = await rewriter.transform(new Response(source)).text();
-  const title = decodeEntities(rawTitle).trim() || ref.title;
-  return { title, revision, html };
+  return { title: title(), revision, html };
+}
+
+/** The URL with the highest density (2x, 1.5x, ...) in a srcset. */
+export function largestCandidate(srcset: string): string | null {
+  let best: { url: string; density: number } | null = null;
+  for (const entry of srcset.split(",")) {
+    const [url, descriptor = "1x"] = entry.trim().split(/\s+/);
+    const density = descriptor.endsWith("x") ? Number.parseFloat(descriptor) : Number.NaN;
+    if (!url || !Number.isFinite(density)) continue;
+    if (!best || density > best.density) best = { url, density };
+  }
+  return best?.url ?? null;
 }
 
 function frontMatter(title: string, ref: ArticleRef, revision: string | null, now: Date): string {

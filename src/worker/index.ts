@@ -11,14 +11,16 @@ app.post("/api/booklet", async (c) => {
   const { success } = await c.env.RATE_LIMITER.limit({ key: ip });
   if (!success) throw new UserError(429, "Too many booklets in a short time. Wait a minute and try again.");
 
-  const body = await c.req.json<{ url?: unknown; paper?: unknown }>().catch(() => ({}) as Record<string, unknown>);
+  const body = await c.req.json<{ url?: unknown; paper?: unknown; references?: unknown; grayscale?: unknown }>().catch(() => ({}) as Record<string, unknown>);
   const ref = typeof body.url === "string" ? parseArticleUrl(body.url) : null;
   if (!ref) throw new UserError(400, "That doesn't look like a link to a Wikipedia article.");
   if (!isPaperId(body.paper)) throw new UserError(400, "Pick a paper size.");
 
   const source = await fetchArticleHtml(ref);
-  const article = await makePrintable(source, ref, body.paper);
-  const pdf = await renderPdf(c.env.BROWSER, article.html);
+  const references = body.references !== false;
+  const grayscale = body.grayscale === true;
+  const article = await makePrintable(source, ref, { paper: body.paper, references, grayscale });
+  const pdf = await renderPdf(c.env.BROWSER, c.env.ASSETS, article.html);
 
   return new Response(pdf, {
     headers: {

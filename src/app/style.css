@@ -39,6 +39,16 @@ label { display: block; margin: 1rem 0 0.25rem; }
 
 input, select, button { font: inherit; color: inherit; }
 
+fieldset.options {
+  margin: 1.25rem 0 0;
+  padding: 0.25rem 0.75rem 0.6rem;
+  border: 1px solid var(--line);
+}
+fieldset.options legend { padding: 0 0.3rem; }
+fieldset.options label { margin: 0.35rem 0 0; }
+label.check { display: flex; align-items: center; gap: 0.5rem; }
+label.check input { width: auto; margin: 0; accent-color: var(--fg); }
+
 input, select {
   box-sizing: border-box;
   width: 100%;
