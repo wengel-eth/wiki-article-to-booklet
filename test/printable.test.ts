@@ -177,3 +177,9 @@ test("references lose their jump-back links and keep web addresses", async () =>
   expect(html).toContain('<a rel="mw:WikiLink">Harbour Press</a>');
   expect(html).not.toContain("href=");
 });
+
+test("srcset URLs may contain commas (Wikipedia's map images)", async () => {
+  const { largestCandidate } = await import("../src/worker/printable");
+  const map = "https://maps.wikimedia.org/img/osm-intl,5,50.18,-4.265,270x200";
+  expect(largestCandidate(`${map}@1.5x.png?lang=en 1.5x, ${map}@2x.png?lang=en 2x`)).toBe(`${map}@2x.png?lang=en`);
+});

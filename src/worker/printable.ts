@@ -37,6 +37,7 @@ const REMOVE = [
   ".mw-empty-elt",
   ".Inline-Template",
   "#coordinates",
+  ".penicon", // "Edit this on Wikidata" pencils in infoboxes
   '[role="navigation"]',
   // In reference lists, the ↑ / "a b c" links that jump back to where a
   // source was cited. Nowhere to jump to on paper.
@@ -155,8 +156,7 @@ export async function makePrintable(
     })
     .on("source[srcset]", {
       element(el) {
-        const srcset = el.getAttribute("srcset")!
-          .split(",")
+        const srcset = splitSrcset(el.getAttribute("srcset")!)
           .map((entry) => {
             const [url, ...descriptor] = entry.trim().split(/\s+/);
             return [absolute(url, lang), ...descriptor].join(" ");
@@ -318,10 +318,18 @@ export function displayUrl(href: string): string {
     .replace(/\/$/, "");
 }
 
+/**
+ * The candidates in a srcset. They're separated by a comma and a space; a
+ * bare comma can be part of a URL (Wikipedia's map images have them).
+ */
+export function splitSrcset(srcset: string): string[] {
+  return srcset.split(/,\s+/).map((c) => c.trim()).filter(Boolean);
+}
+
 /** The URL with the highest density (2x, 1.5x, ...) in a srcset. */
 export function largestCandidate(srcset: string): string | null {
   let best: { url: string; density: number } | null = null;
-  for (const entry of srcset.split(",")) {
+  for (const entry of splitSrcset(srcset)) {
     const [url, descriptor = "1x"] = entry.trim().split(/\s+/);
     const density = descriptor.endsWith("x") ? Number.parseFloat(descriptor) : Number.NaN;
     if (!url || !Number.isFinite(density)) continue;
