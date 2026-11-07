@@ -7,6 +7,7 @@ import { deleteBooklet, listBooklets, saveBooklet, type SavedBooklet } from "./s
 const url = ref("");
 const paper = ref<PaperId>(initialPaper());
 const references = ref(readSetting("references") !== "no");
+const grayscale = ref(readSetting("grayscale") === "yes");
 const busy = ref(false);
 const status = ref("");
 const error = ref("");
@@ -21,6 +22,7 @@ const urlLooksWrong = computed(() => url.value.trim() !== "" && !parseArticleUrl
 
 watch(paper, (value) => writeSetting("paper", value));
 watch(references, (value) => writeSetting("references", value ? "yes" : "no"));
+watch(grayscale, (value) => writeSetting("grayscale", value ? "yes" : "no"));
 
 function readSetting(key: string): string | null {
   try {
@@ -73,7 +75,7 @@ async function submit() {
     const res = await fetch("/api/booklet", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ url: url.value.trim(), paper: paper.value, references: references.value }),
+      body: JSON.stringify({ url: url.value.trim(), paper: paper.value, references: references.value, grayscale: grayscale.value }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => null);
@@ -173,6 +175,10 @@ function formatDate(ms: number) {
         <label class="check">
           <input v-model="references" type="checkbox" />
           Include references
+        </label>
+        <label class="check">
+          <input v-model="grayscale" type="checkbox" />
+          Black and white images (uses less colour ink)
         </label>
       </fieldset>
 

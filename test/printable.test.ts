@@ -21,7 +21,7 @@ const PARSOID = `<!DOCTYPE html>
 </body></html>`;
 
 test("makePrintable cleans up and adds front matter", async () => {
-  const out = await makePrintable(PARSOID, { lang: "en", title: "AC/DC" }, { paper: "a4", references: true }, new Date("2026-11-07T12:00:00Z"));
+  const out = await makePrintable(PARSOID, { lang: "en", title: "AC/DC" }, { paper: "a4", references: true, grayscale: false }, new Date("2026-11-07T12:00:00Z"));
 
   expect(out.title).toBe("AC/DC & friends");
   expect(out.revision).toBe("1234567");
@@ -64,12 +64,18 @@ test("makePrintable cleans up and adds front matter", async () => {
 });
 
 test("makePrintable can leave references out", async () => {
-  const out = await makePrintable(PARSOID, { lang: "en", title: "AC/DC" }, { paper: "a4", references: false });
+  const out = await makePrintable(PARSOID, { lang: "en", title: "AC/DC" }, { paper: "a4", references: false, grayscale: false });
   expect(out.html).not.toContain('class="mw-ref');
   expect(out.html).not.toContain('<div class="mw-references-wrap">');
   expect(out.html).not.toContain("A reference.");
   expect(out.html).toContain('class="mw-content-ltr no-references"');
   expect(out.html).toContain("AC/DC are a rock band.");
+});
+
+test("makePrintable can print images in black and white", async () => {
+  const out = await makePrintable(PARSOID, { lang: "en", title: "AC/DC" }, { paper: "a4", references: true, grayscale: true });
+  expect(out.html).toContain('<body lang="en" dir="ltr" class="mw-content-ltr grayscale">');
+  expect(out.html).toContain("body.grayscale img");
 });
 
 test("largestCandidate picks the highest density", () => {
@@ -81,7 +87,7 @@ test("largestCandidate picks the highest density", () => {
 
 test("running heads escape quotes and shorten long titles", async () => {
   const long = PARSOID.replace("AC/DC &amp; friends", `The "Long" Title ${"x".repeat(80)}`);
-  const out = await makePrintable(long, { lang: "en", title: "X" }, { paper: "a4", references: true });
+  const out = await makePrintable(long, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
   expect(out.html).toContain('content: "The \\22 Long\\22  Title xxxx');
   expect(out.html).toMatch(/xxx\\2026 ";/);
 });

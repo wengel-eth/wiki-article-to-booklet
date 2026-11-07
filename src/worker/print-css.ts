@@ -171,6 +171,10 @@ ol.references {
 .references li { text-align: left; hyphens: none; overflow-wrap: anywhere; margin-bottom: 0.6mm; break-inside: avoid; }
 .reflist .mw-references-wrap { columns: auto !important; }
 
+/* Black and white images, to save colour ink. Chrome keeps filtered images at
+   print resolution. */
+body.grayscale img, body.grayscale svg, body.grayscale video { filter: grayscale(1); }
+
 /* With references left out, hide sections that only held them. */
 body.no-references section:not(:has(> :not(h2, h3, .mw-heading, style, link, meta))) { display: none; }
 

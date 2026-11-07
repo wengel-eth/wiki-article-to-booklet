@@ -47,6 +47,8 @@ export interface PrintOptions {
   paper: PaperId;
   /** Keep footnote markers and reference lists. */
   references: boolean;
+  /** Print images in black and white. */
+  grayscale: boolean;
 }
 
 // Footnote markers and reference lists, for when references are left out.
@@ -55,7 +57,7 @@ const REFERENCES = ["sup.mw-ref", "sup.reference", ".mw-references-wrap", ".refl
 export async function makePrintable(
   source: string,
   ref: ArticleRef,
-  { paper, references }: PrintOptions,
+  { paper, references, grayscale }: PrintOptions,
   now = new Date(),
 ): Promise<PrintableArticle> {
   let rawTitle = "";
@@ -143,7 +145,10 @@ export async function makePrintable(
     })
     .on("body", {
       element(el) {
-        if (!references) el.setAttribute("class", `${el.getAttribute("class") ?? ""} no-references`.trim());
+        const classes = [el.getAttribute("class") ?? ""];
+        if (!references) classes.push("no-references");
+        if (grayscale) classes.push("grayscale");
+        el.setAttribute("class", classes.join(" ").trim());
         el.prepend(frontMatter(title(), ref, revision, now), { html: true });
       },
     });
