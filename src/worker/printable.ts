@@ -67,6 +67,9 @@ const MIN_LEAD_WIDTH = 600;
 /** Images at least this many times wider than tall are printed full width. */
 const WIDE_RATIO = 1.6;
 
+/** Template image boxes at least this wide on screen (CSS px) are printed full width. */
+const WIDE_BOX_PX = 300;
+
 // Footnote markers and reference lists, for when references are left out.
 const REFERENCES = ["sup.mw-ref", "sup.reference", ".mw-references-wrap", ".reflist"].join(", ");
 
@@ -147,6 +150,15 @@ export async function makePrintable(
         el.removeAttribute("srcset");
         el.removeAttribute("loading");
         el.removeAttribute("decoding");
+      },
+    })
+    // Image boxes made by templates ({{multiple image}} and older thumbnails)
+    // are <div class="thumb"> with a fixed on-screen width. Mark the wide ones
+    // (images side by side) to keep the full column width; see print-css.ts.
+    .on("div.thumb > .thumbinner[style]", {
+      element(el) {
+        const width = Number(el.getAttribute("style")!.match(/(?:^|;)\s*width:\s*(\d+)px/)?.[1]);
+        if (width >= WIDE_BOX_PX) el.setAttribute("data-wide", "");
       },
     })
     .on("source[src]", {

@@ -183,3 +183,11 @@ test("srcset URLs may contain commas (Wikipedia's map images)", async () => {
   const map = "https://maps.wikimedia.org/img/osm-intl,5,50.18,-4.265,270x200";
   expect(largestCandidate(`${map}@1.5x.png?lang=en 1.5x, ${map}@2x.png?lang=en 2x`)).toBe(`${map}@2x.png?lang=en`);
 });
+
+test("template image boxes wider than 300px on screen are marked to keep the full width", async () => {
+  const box = (w: number) => `<div class="thumb tmulti floatright"><div class="thumbinner multiimageinner" style="width:${w}px;max-width:${w}px"><div class="trow"><div class="tsingle"><img src="//x/a.jpg" width="200" height="130"/></div></div></div></div>`;
+  const src = PARSOID.replace("<p data-mw", `${box(204)}${box(404)}<p data-mw`);
+  const { html } = await makePrintable(src, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
+  expect(html).toContain('style="width:204px;max-width:204px">');
+  expect(html).toContain('style="width:404px;max-width:404px" data-wide="">');
+});

@@ -130,7 +130,10 @@ a { color: inherit; text-decoration: none; }
 
 /* Headings */
 h1, h2, h3, h4, h5, h6 { font-weight: normal; break-after: avoid; line-height: 1.25; }
-h2 { clear: both; font-size: 13pt; margin: 6mm 0 2mm; border-bottom: 0.4pt solid #000; padding-bottom: 0.5mm; }
+/* Headings may sit beside a picture from the section before, narrowing to fit
+   (flow-root keeps the underline from running under the picture), rather
+   than leaving a gap beside it. */
+h2 { display: flow-root; font-size: 13pt; margin: 6mm 0 2mm; border-bottom: 0.4pt solid #000; padding-bottom: 0.5mm; }
 h3 { font-size: 11pt; margin: 4mm 0 1.5mm; font-style: italic; }
 h4, h5, h6 { font-size: 9.5pt; margin: 3mm 0 1mm; font-weight: bold; }
 p { margin: 0 0 2mm; }
@@ -152,6 +155,33 @@ figure:not(:has(img[data-wide])) {
   margin: 0.8mm 0 2mm 4mm;
 }
 figure:has(img[data-wide]) { margin: 3mm 0; text-align: center; }
+
+/* Image boxes made by templates ({{multiple image}}, older thumbnails):
+   <div class="thumb"> with fixed on-screen widths. Wikipedia's own stylesheet
+   floats them, and it isn't loaded here, so float them like figures and let
+   the images inside scale to fit. Boxes of images side by side stay full
+   width (printable.ts marks them). */
+div.thumb {
+  float: right;
+  clear: right;
+  width: fit-content;
+  max-width: 46%;
+  margin: 0.8mm 0 2mm 4mm;
+}
+div.thumb:has(> .thumbinner[data-wide]) { float: none; width: auto; max-width: none; margin: 3mm 0; }
+div.thumb .thumbinner { width: auto !important; max-width: 100% !important; }
+.tmulti .multiimageinner { display: flex; flex-direction: column; gap: 1.5mm; }
+.tmulti .trow { display: flex; gap: 1.5mm; }
+.tmulti .tsingle {
+  float: none;
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto !important;
+  max-width: none !important;
+  margin: 0;
+}
+.tmulti .tsingle img, div.thumb .thumbimage img { width: 100%; height: auto; }
+.tmulti .theader { font-weight: bold; text-align: center; font-size: 7.5pt; }
 figure img, .thumb img {
   display: block;
   margin: 0 auto;
