@@ -220,8 +220,13 @@ table.infobox, table.vcard, table.sidebar {
   width: 100% !important;
   margin: 0 0 4mm !important;
   border: 0.4pt solid #888;
-  break-inside: avoid;
 }
+/* Infoboxes may continue onto the next page (a tall one would otherwise
+   leave the page before it nearly empty), but rows stay whole. */
+.infobox tr { break-inside: avoid; }
+/* Map switchers in infoboxes show one map at a time, with buttons that need
+   Wikipedia's scripts. Print the first map only. */
+.switcher-container > div ~ div, .switcher-label { display: none !important; }
 .infobox th, .infobox td { border-top: 0.3pt solid #ccc; }
 .infobox-above, .infobox-title { font-size: 10pt; text-align: center !important; }
 caption { font-weight: bold; padding-bottom: 1mm; }
@@ -238,8 +243,9 @@ ol.references {
 .mw-references-wrap ol.references, .reflist ol.references { font-size: inherit; }
 .references li { text-align: left; hyphens: none; overflow-wrap: anywhere; margin-bottom: 0.6mm; break-inside: avoid; }
 .reflist .mw-references-wrap { columns: auto !important; }
-/* Web addresses, printed after the link text since nothing on paper is clickable. */
-a[data-url]::after {
+/* Web addresses in references and citations, printed after the link text
+   since nothing on paper is clickable. */
+.references a[data-url]::after, cite a[data-url]::after {
   content: " (" attr(data-url) ")";
   overflow-wrap: anywhere;
   hyphens: none;
