@@ -155,12 +155,7 @@ figure:not(:has(img[data-wide])) {
   margin: 0.8mm 0 2mm 4mm;
 }
 figure:has(img[data-wide]) { margin: 3mm 0; text-align: center; }
-/* Full width, unless that would make it taller than FULL_MAX_HEIGHT: then as
-   wide as that height allows, centred. --ar is the aspect ratio. */
-figure img[data-wide] {
-  width: min(100%, calc(var(--ar, 2) * ${Math.round(page.height * 0.45)}mm));
-  max-height: none;
-}
+figure img[data-wide] { width: 100%; }
 
 /* Videos and sound files can't play on paper. */
 figure:has(video, audio), div.thumb:has(video, audio), video, audio { display: none !important; }

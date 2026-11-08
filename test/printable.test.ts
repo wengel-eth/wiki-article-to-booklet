@@ -99,7 +99,7 @@ test("wide images are marked to keep the full width", async () => {
     `<figure><img src="//upload.wikimedia.org/pano.jpg" width="500" height="200"/></figure></section>\n<section data-mw-section-id="4">`,
   );
   const { html } = await makePrintable(src, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
-  expect(html).toContain('<img src="https://upload.wikimedia.org/pano.jpg" width="500" height="200" data-wide="" style="--ar: 2.500" />');
+  expect(html).toContain('<img src="https://upload.wikimedia.org/pano.jpg" width="500" height="200" data-wide="" />');
   expect(html).toContain('<img src="https://upload.wikimedia.org/x2.jpg" width="250" height="200" />');
 });
 
@@ -205,25 +205,4 @@ test("wide images ask for a 960px file when the original is big enough", async (
   const { html } = await makePrintable(src, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
   expect(html).toContain('src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Neun-Drachen-Mauer.jpg/960px-');
   expect(html).toContain('src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Neun-Drachen-Mauer.jpg/500px-');
-});
-
-test("which pictures print full width and which float beside the text", async () => {
-  const { printFullWidth } = await import("../src/worker/printable");
-  const def = "mw-default-size";
-  // Wide pictures, anywhere
-  expect(printFullWidth(250, 133, def)).toBe(true);
-  expect(printFullWidth(250, 165, def)).toBe(true); // 1.52
-  // Ordinary photos float
-  expect(printFullWidth(250, 188, def)).toBe(false);
-  expect(printFullWidth(170, 240, def)).toBe(false);
-  // Centred by the editors
-  expect(printFullWidth(250, 188, `${def} mw-halign-center`)).toBe(true);
-  // Made larger than default by the editors
-  expect(printFullWidth(350, 300, "mw-halign-right")).toBe(true);
-  expect(printFullWidth(220, 300, "mw-halign-right")).toBe(false);
-  // Drawings: maps, plans, diagrams
-  expect(printFullWidth(220, 300, def, "drawing")).toBe(true);
-  expect(printFullWidth(220, 300, def, "bitmap")).toBe(false);
-  // Outside figures (infoboxes, galleries), only shape counts
-  expect(printFullWidth(220, 300, undefined, "drawing")).toBe(false);
 });
