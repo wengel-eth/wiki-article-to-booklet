@@ -237,6 +237,9 @@ table.infobox, table.vcard, table.sidebar {
 .switcher-container .locmap > div > div:last-of-type:not([style*="position"]) { text-align: center; }
 .switcher-label { display: none !important; }
 .infobox th, .infobox td { border-top: 0.3pt solid #ccc; }
+/* Images and maps in an infobox get room around them; the 0.6mm of an
+   ordinary row looks cramped against the border. */
+.infobox td.infobox-image { padding: 2mm 2mm 1.5mm; }
 .infobox-above, .infobox-title { font-size: 10pt; text-align: center !important; }
 caption { font-weight: bold; padding-bottom: 1mm; }
 
