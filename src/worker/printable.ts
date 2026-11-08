@@ -1,6 +1,7 @@
 import type { PaperId } from "../shared/paper";
 import { printCss } from "./print-css";
 import { qrSvg } from "./qr";
+import { extraCharacters, extraFontUrl } from "./script-fonts";
 import { articleUrl, type ArticleRef, type PageImage } from "./wikipedia";
 
 export interface PrintableArticle {
@@ -90,6 +91,7 @@ export async function makePrintable(
   now = new Date(),
 ): Promise<PrintableArticle> {
   let rawTitle = "";
+  let bodyText = "";
   let revision: string | null = null;
   const lang = ref.lang;
 
@@ -110,6 +112,12 @@ export async function makePrintable(
         // about="https://en.wikipedia.org/wiki/Special:Redirect/revision/123"
         const about = el.getAttribute("about") ?? "";
         revision = about.match(/\/revision\/(\d+)$/)?.[1] ?? null;
+      },
+    })
+    // The article's text, for the characters Literata lacks; see script-fonts.ts.
+    .on("body", {
+      text(chunk) {
+        bodyText += chunk.text;
       },
     })
     .on("head title", {
@@ -257,6 +265,12 @@ export async function makePrintable(
         if (grayscale) classes.push("grayscale");
         el.setAttribute("class", classes.join(" ").trim());
         el.prepend(frontMatter(title(), ref, revision, generatedAt(now, timeZone)), { html: true });
+        // Known only once the text has been read: a font with the characters
+        // Literata lacks. A stylesheet of its own, as @import has to come first.
+        el.onEndTag((end) => {
+          const extra = extraCharacters(decodeEntities(bodyText));
+          if (extra) end.before(`<style>@import url("${extraFontUrl(extra)}");</style>`, { html: true });
+        });
       },
     })
     .on("section", {

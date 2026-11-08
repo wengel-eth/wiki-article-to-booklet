@@ -1,11 +1,17 @@
 import { bookletPageSize, type PaperId } from "../shared/paper";
 import { FONT_FACES } from "./fonts";
+import { CJK, fontStack, SCRIPT_FONTS_URL } from "./script-fonts";
 import { TABLE_CSS } from "./tables";
 
 /** Fonts are requested from this made-up host and answered by the Worker. */
 export const FONT_ORIGIN = "https://fonts.booklet.invalid";
 
-const SERIF = `"Literata", "Noto Serif", "DejaVu Serif", "Liberation Serif", Georgia, serif`;
+const SERIF = fontStack();
+const SERIF_BY_LANG: [string, string][] = [
+  [":lang(ja)", fontStack([CJK.jp, CJK.sc, CJK.tc, CJK.kr])],
+  [":lang(ko)", fontStack([CJK.kr, CJK.sc, CJK.tc, CJK.jp])],
+  [":lang(zh-Hant), :lang(zh-TW), :lang(zh-HK), :lang(zh-MO), :lang(yue)", fontStack([CJK.tc, CJK.sc, CJK.jp, CJK.kr])],
+];
 
 // Margins in mm. The inner margin (along the fold) is a little wider than the
 // outer one so text doesn't disappear into the spine.
@@ -40,6 +46,7 @@ export function printCss({ paper, title }: PrintCssOptions): string {
   const coverHeight = page.height - MARGIN.top - MARGIN.bottom - 1;
 
   return `
+@import url("${SCRIPT_FONTS_URL}");
 ${fontFaces}
 
 @page {
@@ -74,6 +81,9 @@ html {
 body { margin: 0; }
 p, li, dd { text-align: justify; hyphens: auto; orphans: 3; widows: 3; }
 a { color: inherit; text-decoration: none; }
+
+/* Chinese, Japanese and Korean text marked with its language */
+${SERIF_BY_LANG.map(([selector, fonts]) => `${selector} { font-family: ${fonts}; }`).join("\n")}
 
 /* Cover and colophon */
 .booklet-cover {
