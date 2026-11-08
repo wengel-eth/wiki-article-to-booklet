@@ -35,9 +35,24 @@ export const ARRANGE_IMAGES = `(() => {
   };
 
   for (const box of document.querySelectorAll(".switcher-container")) {
+    let total = 0;
+    let count = 0;
     for (const item of box.children) {
       const ratio = item.tagName === "DIV" ? shape(item.querySelector(".locmap") ?? item) : null;
-      if (ratio) item.style.flexGrow = String(ratio);
+      if (!ratio) continue;
+      item.style.flexGrow = String(ratio);
+      total += ratio;
+      count++;
+    }
+    // Infobox images have a height cap. If the maps would reach it, narrow
+    // the row so they fill their shares exactly at that height, centred,
+    // rather than each floating in a wider share with uneven gaps.
+    const img = box.querySelector(".locmap img");
+    const cap = img ? parseFloat(getComputedStyle(img).maxHeight) : NaN;
+    if (count && Number.isFinite(cap)) {
+      const gap = parseFloat(getComputedStyle(box).columnGap) || 0;
+      box.style.maxWidth = total * cap + gap * (count - 1) + "px";
+      box.style.marginInline = "auto";
     }
   }
 

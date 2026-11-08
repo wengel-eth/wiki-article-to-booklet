@@ -169,8 +169,18 @@ figure:has(video, audio), div.thumb:has(video, audio), video, audio { display: n
 
 /* Static maps (Kartographer mapframes) are inline links; as a block, their
    caption goes underneath instead of beside them. */
-a.mw-kartographer-map { display: block; width: fit-content; max-width: 100%; margin: 1mm auto; }
+a.mw-kartographer-map {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 auto 1mm;
+}
 a.mw-kartographer-map img { display: block; }
+/* In an infobox, a map's cell is padded and its caption centred like the
+   infobox's other pictures. */
+.infobox td:has(> a.mw-kartographer-map) { padding: 2mm 2mm 1.5mm !important; text-align: center; }
 
 /* Image boxes made by templates ({{multiple image}}, older thumbnails):
    <div class="thumb"> with fixed on-screen widths. Wikipedia's own stylesheet
