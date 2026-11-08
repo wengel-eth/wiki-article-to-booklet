@@ -285,7 +285,11 @@ table { border-collapse: collapse; max-width: 100%; font-size: 7.5pt; line-heigh
    the table wider than the page. Infoboxes keep theirs. */
 :is(td, th) img { max-width: 25mm; height: auto; }
 :is(.infobox, .vcard, .sidebar) :is(td, th) img { max-width: 100%; }
-th, td { padding: 0.6mm 1.2mm; vertical-align: top; text-align: left; overflow-wrap: anywhere; }
+/* break-word, not anywhere: a word is still split if it can't fit on a line
+   at all, but columns are sized to their longest word, so a column of short
+   names isn't squeezed to a few letters wide. */
+th, td { padding: 0.6mm 1.2mm; vertical-align: top; text-align: left; overflow-wrap: break-word; }
+:is(.infobox, .vcard, .sidebar) :is(th, td) { overflow-wrap: anywhere; }
 .wikitable th, .wikitable td { border: 0.4pt solid #888; }
 .wikitable th { background: #eee; }
 table.infobox, table.vcard, table.sidebar {
