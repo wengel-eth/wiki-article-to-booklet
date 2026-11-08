@@ -191,3 +191,18 @@ test("template image boxes wider than 300px on screen are marked to keep the ful
   expect(html).toContain('style="width:204px;max-width:204px">');
   expect(html).toContain('style="width:404px;max-width:404px" data-wide="">');
 });
+
+test("wide images ask for a 960px file when the original is big enough", async () => {
+  const { resizedThumb } = await import("../src/worker/printable");
+  const t = "//thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Neun-Drachen-Mauer.jpg/250px-Neun-Drachen-Mauer.jpg?utm_source=x";
+  expect(resizedThumb(t, 960)).toBe("//thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Neun-Drachen-Mauer.jpg/960px-Neun-Drachen-Mauer.jpg?utm_source=x");
+  expect(resizedThumb("//upload.wikimedia.org/wikipedia/commons/4/4b/X.jpg", 960)).toBeNull();
+  expect(resizedThumb(t.replace("250px", "1280px"), 960)).toBeNull();
+
+  const fig = (fileWidth: number) =>
+    `<figure typeof="mw:File/Thumb"><img src="${t}" srcset="${t.replace("250px", "500px")} 2x" data-file-width="${fileWidth}" width="250" height="133"/></figure>`;
+  const src = PARSOID.replace("<p data-mw", `${fig(2311)}${fig(600)}<p data-mw`);
+  const { html } = await makePrintable(src, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
+  expect(html).toContain('src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Neun-Drachen-Mauer.jpg/960px-');
+  expect(html).toContain('src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Neun-Drachen-Mauer.jpg/500px-');
+});

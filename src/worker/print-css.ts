@@ -155,13 +155,17 @@ figure:not(:has(img[data-wide])) {
   margin: 0.8mm 0 2mm 4mm;
 }
 figure:has(img[data-wide]) { margin: 3mm 0; text-align: center; }
+figure img[data-wide] { width: 100%; }
+
+/* Videos and sound files can't play on paper. */
+figure:has(video, audio), div.thumb:has(video, audio), video, audio { display: none !important; }
 
 /* Image boxes made by templates ({{multiple image}}, older thumbnails):
    <div class="thumb"> with fixed on-screen widths. Wikipedia's own stylesheet
    floats them, and it isn't loaded here, so float them like figures and let
    the images inside scale to fit. Boxes of images side by side stay full
    width (printable.ts marks them). */
-div.thumb {
+div.thumb:not(.gallerybox .thumb) {
   float: right;
   clear: right;
   width: fit-content;
@@ -206,8 +210,20 @@ figure img, .thumb img {
 .infobox tr:has(> .infobox-image):not(:has(img)) { display: none; }
 figcaption, .thumbcaption { font-size: 7pt; line-height: 1.3; text-align: left; hyphens: auto; margin-top: 1mm; }
 .infobox img { max-height: ${Math.round(page.height * 0.22)}mm; object-fit: contain; }
-ul.gallery { list-style: none; padding: 0; margin: 3mm 0; display: flex; flex-wrap: wrap; gap: 2mm; justify-content: center; clear: both; }
-ul.gallery li { break-inside: avoid; max-width: 31%; font-size: 7pt; line-height: 1.3; }
+/* Galleries: rows of pictures at the same height, filling the width.
+   arrange.ts sizes each picture by its shape. */
+ul.gallery { list-style: none; padding: 0; margin: 3mm 0; display: flex; flex-wrap: wrap; gap: 2mm; clear: both; }
+ul.gallery li.gallerybox {
+  break-inside: avoid;
+  width: auto !important;
+  margin: 0;
+  font-size: 7pt;
+  line-height: 1.3;
+}
+ul.gallery .gallerybox .thumb { width: auto !important; height: auto !important; margin: 0; padding: 0; border: 0; }
+ul.gallery .gallerybox img { display: block; width: 100%; height: auto; }
+ul.gallery .gallerytext { margin-top: 0.8mm; text-align: left; hyphens: auto; }
+li.gallerycaption { flex-basis: 100%; font-weight: bold; }
 .mwe-math-mathml-a11y { display: none; }
 
 /* Tables and infoboxes */
@@ -224,8 +240,12 @@ table.infobox, table.vcard, table.sidebar {
 /* Infoboxes may continue onto the next page (a tall one would otherwise
    leave the page before it nearly empty), but rows stay whole. */
 .infobox tr { break-inside: avoid; }
+/* A header row stays with the row after it, rather than being left alone at
+   the bottom of a page. */
+tr:has(> th[colspan]:only-child), tr:has(> .infobox-header), tr:has(> .infobox-above),
+thead tr:last-child, caption { break-after: avoid; }
 /* Map switchers in infoboxes show one map at a time, with buttons that need
-   Wikipedia's scripts. Print the maps side by side instead. maps.ts gives
+   Wikipedia's scripts. Print the maps side by side instead. arrange.ts gives
    each a share of the width in proportion to its shape, so they come out
    the same height with captions in line. The location markers are placed
    in percentages, so they stay put as the maps shrink. */

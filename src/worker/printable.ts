@@ -67,6 +67,12 @@ const MIN_LEAD_WIDTH = 600;
 /** Images at least this many times wider than tall are printed full width. */
 const WIDE_RATIO = 1.6;
 
+/**
+ * Width of the file used for full-width images: about 220 dpi across the
+ * column. One of Wikimedia's standard thumbnail sizes.
+ */
+const WIDE_IMAGE_PX = 960;
+
 /** Template image boxes at least this wide on screen (CSS px) are printed full width. */
 const WIDE_BOX_PX = 300;
 
@@ -139,14 +145,21 @@ export async function makePrintable(
           el.remove();
           return;
         }
+        const thumb = el.getAttribute("src");
         const srcset = el.getAttribute("srcset");
         const best = srcset ? largestCandidate(srcset) : null;
-        const src = best ?? el.getAttribute("src");
+        const src = best ?? thumb;
         if (src) el.setAttribute("src", absolute(src, lang));
-        // Wide images keep the full column width; see print-css.ts.
+        // Wide images are printed across the full column (see print-css.ts),
+        // far bigger than on screen, so ask for a larger file.
         const width = Number(el.getAttribute("width"));
         const height = Number(el.getAttribute("height"));
-        if (width > 0 && height > 0 && width / height >= WIDE_RATIO) el.setAttribute("data-wide", "");
+        if (width > 0 && height > 0 && width / height >= WIDE_RATIO) {
+          el.setAttribute("data-wide", "");
+          const fileWidth = Number(el.getAttribute("data-file-width"));
+          const bigger = thumb && fileWidth > WIDE_IMAGE_PX ? resizedThumb(thumb, WIDE_IMAGE_PX) : null;
+          if (bigger) el.setAttribute("src", absolute(bigger, lang));
+        }
         el.removeAttribute("srcset");
         el.removeAttribute("loading");
         el.removeAttribute("decoding");
@@ -336,6 +349,17 @@ export function displayUrl(href: string): string {
  */
 export function splitSrcset(srcset: string): string[] {
   return srcset.split(/,\s+/).map((c) => c.trim()).filter(Boolean);
+}
+
+/**
+ * The same Wikimedia thumbnail at another width:
+ * .../thumb/a/ab/X.jpg/250px-X.jpg?q  ->  .../thumb/a/ab/X.jpg/960px-X.jpg?q
+ * Null for anything else, or if it wouldn't be bigger.
+ */
+export function resizedThumb(url: string, width: number): string | null {
+  const m = url.match(/^(.*\/thumb\/.+\/)(\d+)px-([^/?]+)(\?.*)?$/);
+  if (!m || Number(m[2]) >= width) return null;
+  return `${m[1]}${width}px-${m[3]}${m[4] ?? ""}`;
 }
 
 /** The URL with the highest density (2x, 1.5x, ...) in a srcset. */
