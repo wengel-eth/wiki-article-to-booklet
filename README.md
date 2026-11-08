@@ -41,6 +41,10 @@ IndexedDB, offer download
 - The rendering browser may only load from `*.wikipedia.org` and
   `*.wikimedia.org`. Fonts are requested from a placeholder host and answered
   by the Worker from its own static assets (`public/fonts/`).
+- Scripts Literata doesn't cover (Chinese, Arabic, Manchu, Tibetan, ...) use
+  Noto fonts from Google Fonts, trimmed so each downloads only for its own
+  script, plus one small Noto Serif file with the article's own characters
+  Literata lacks, such as IPA. See `src/worker/script-fonts.ts`.
 - Images use the 2x versions Wikipedia lists in `srcset`, at the same size on
   the page, so they print at about 200 dpi instead of 100.
 - The article's page image (the one the Wikipedia app shows as a header,
@@ -106,6 +110,7 @@ regenerate `worker-configuration.d.ts`.
 ## Licence
 
 Code: see [LICENSE](LICENSE). The print font is Literata, under the SIL
-Open Font License ([public/fonts/OFL.txt](public/fonts/OFL.txt)). Article text comes from Wikipedia under
+Open Font License ([public/fonts/OFL.txt](public/fonts/OFL.txt)); the Noto
+fonts loaded from Google Fonts are under the same licence. Article text comes from Wikipedia under
 CC BY-SA 4.0; each booklet's second page says where it came from and links to
 the article history.

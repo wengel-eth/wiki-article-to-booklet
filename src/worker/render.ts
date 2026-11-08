@@ -6,6 +6,7 @@ import { GRAYSCALE_COLORS } from "./grayscale";
 import { TINT_INFOBOXES } from "./tint";
 import { ARRANGE_IMAGES, RETRY_IMAGES } from "./arrange";
 import { contentBox, FONT_ORIGIN } from "./print-css";
+import { APPEND_FONT_FALLBACKS, scriptFontsCss } from "./script-fonts";
 import { fitTables } from "./tables";
 
 const PX_PER_MM = 96 / 25.4;
@@ -13,8 +14,9 @@ const PX_PER_MM = 96 / 25.4;
 const LOAD_TIMEOUT_MS = 40_000;
 const PDF_TIMEOUT_MS = 60_000;
 
-// The page only needs Wikipedia's own images (upload.wikimedia.org) and math
-// renderings (wikimedia.org). Everything else is refused.
+// The page only needs Wikipedia's own images and maps (*.wikimedia.org), math
+// renderings (wikimedia.org), and Google Fonts for scripts Literata doesn't
+// cover. Everything else is refused.
 function allowed(url: string): boolean {
   if (url.startsWith("data:") || url === "about:blank") return true;
   try {
@@ -23,7 +25,10 @@ function allowed(url: string): boolean {
       protocol === "https:" &&
       (hostname === "wikimedia.org" ||
         hostname.endsWith(".wikimedia.org") ||
-        hostname.endsWith(".wikipedia.org"))
+        hostname.endsWith(".wikipedia.org") ||
+        // Fonts for scripts Literata doesn't cover; see print-css.ts.
+        hostname === "fonts.googleapis.com" ||
+        hostname === "fonts.gstatic.com")
     );
   } catch {
     return false;
@@ -64,6 +69,12 @@ export async function renderPdf(
           (body) => (body ? req.respond({ status: 200, headers: {}, contentType: "font/woff2", body }) : req.abort()),
           () => req.abort(),
         );
+      } else if (url.startsWith("https://fonts.googleapis.com/css")) {
+        // Google's CSS for the script fonts, trimmed: see script-fonts.ts.
+        scriptFontsCss(url, req.headers()).then(
+          (body) => (body ? req.respond({ status: 200, headers: {}, contentType: "text/css", body }) : req.abort()),
+          () => req.abort(),
+        );
       } else if (allowed(url)) req.continue();
       else req.abort();
     });
@@ -88,6 +99,8 @@ export async function renderPdf(
     }
 
     progress({ stage: "layout" });
+    await page.evaluate(APPEND_FONT_FALLBACKS);
+    await page.evaluate("document.fonts.ready.then(() => true)");
     await page.evaluate(RETRY_IMAGES);
     await page.evaluate(TINT_INFOBOXES);
     await page.evaluate(GRAYSCALE_COLORS);
