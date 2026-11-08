@@ -34,7 +34,6 @@ const REMOVE = [
   ".hatnote",
   ".shortdescription",
   ".mw-editsection",
-  ".mw-empty-elt",
   ".Inline-Template",
   "#coordinates",
   ".penicon", // "Edit this on Wikidata" pencils in infoboxes

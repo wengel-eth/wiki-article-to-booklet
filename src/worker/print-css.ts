@@ -275,6 +275,18 @@ thead tr:last-child, caption { break-after: avoid; }
 }
 body.grayscale .locmap .od .id::after { background: #000; }
 .infobox th, .infobox td { border-top: 0.3pt solid #ccc; }
+/* Header rows look the same in every infobox: plain grey section headers,
+   no decorative borders or colours (templates add things like thick red and
+   blue frames). Colours in the data cells, such as party colours, stay. */
+.infobox :is(.infobox-header, .infobox-subheader) { background: #eee !important; color: #000 !important; }
+.infobox :is(.infobox-above, .infobox-title, caption) { background: transparent !important; color: #000 !important; }
+.infobox :is(.infobox-header, .infobox-subheader, .infobox-above, .infobox-title, caption) * {
+  border: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+}
+/* Tables nested in an infobox (such as a box of transcriptions) fill it. */
+.infobox table { width: 100% !important; margin: 0 !important; }
 /* Images and maps in an infobox get room around them; the 0.6mm of an
    ordinary row looks cramped against the border. */
 .infobox td.infobox-image { padding: 2mm 2mm 1.5mm; }
@@ -326,6 +338,10 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* Wide and long tables; see tables.ts */
 ${TABLE_CSS}
+
+/* Parsoid's empty placeholders. Hidden rather than removed: some hold the
+   template styles that other parts of the page need. */
+.mw-empty-elt { display: none !important; }
 
 /* Sections that don't belong on paper */
 section:has(> h2#External_links, > .mw-heading > h2#External_links),
