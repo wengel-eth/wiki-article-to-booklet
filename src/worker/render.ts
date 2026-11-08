@@ -3,6 +3,7 @@ import type { PaperId } from "../shared/paper";
 import type { ServerEvent } from "../shared/progress";
 import { BUILD_CONTENTS, fillContents, headingPages, REMOVE_CONTENTS } from "./contents";
 import { GRAYSCALE_COLORS } from "./grayscale";
+import { ARRANGE_MAPS } from "./maps";
 import { contentBox, FONT_ORIGIN } from "./print-css";
 import { fitTables } from "./tables";
 
@@ -87,6 +88,7 @@ export async function renderPdf(
 
     progress({ stage: "layout" });
     await page.evaluate(GRAYSCALE_COLORS);
+    await page.evaluate(ARRANGE_MAPS);
     await page.evaluate(fitTables(layout));
     const entries = (await page.evaluate(BUILD_CONTENTS)) as number;
     let passes = 1;

@@ -105,8 +105,8 @@ a { color: inherit; text-decoration: none; }
   break-after: page;
 }
 .booklet-colophon p { text-align: left; hyphens: none; margin: 0 0 2mm; overflow-wrap: anywhere; }
-.booklet-qr-block { display: flex; align-items: flex-end; gap: 4mm; margin-bottom: 8mm; }
-.booklet-qr { flex: none; }
+.booklet-qr-block { margin-bottom: 8mm; }
+.booklet-qr { display: block; margin: 0 0 2.5mm -0.8mm; }
 .booklet-qr-block p { margin: 0 0 1mm; font-size: 8pt; }
 
 /* Contents */
@@ -220,9 +220,44 @@ table.infobox, table.vcard, table.sidebar {
   width: 100% !important;
   margin: 0 0 4mm !important;
   border: 0.4pt solid #888;
-  break-inside: avoid;
 }
+/* Infoboxes may continue onto the next page (a tall one would otherwise
+   leave the page before it nearly empty), but rows stay whole. */
+.infobox tr { break-inside: avoid; }
+/* Map switchers in infoboxes show one map at a time, with buttons that need
+   Wikipedia's scripts. Print the maps side by side instead. maps.ts gives
+   each a share of the width in proportion to its shape, so they come out
+   the same height with captions in line. The location markers are placed
+   in percentages, so they stay put as the maps shrink. */
+.switcher-container { display: flex; gap: 3mm; justify-content: center; align-items: flex-start; }
+.switcher-container > div { flex: 1 1 0; min-width: 0; }
+.switcher-container .locmap,
+.switcher-container .locmap div[style*="width"] { width: 100% !important; max-width: 100%; }
+.switcher-container .locmap img { width: 100%; height: auto; }
+.switcher-container .locmap > div > div:last-of-type:not([style*="position"]) { text-align: center; }
+.switcher-label { display: none !important; }
+/* Location map markers are small icons (often a dot, sometimes a symbol
+   such as a mine's hammer and pick) that print as a 3mm smudge. Replace them
+   with a crisp dot: a white ring and thin outline keep it visible on any map. */
+.locmap .od .id img { visibility: hidden; }
+.locmap .od .id::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1.6mm;
+  height: 1.6mm;
+  margin: -1.3mm 0 0 -1.3mm;
+  border: 0.5mm solid #fff;
+  border-radius: 50%;
+  background: #b00;
+  box-shadow: 0 0 0 0.3pt #000;
+}
+body.grayscale .locmap .od .id::after { background: #000; }
 .infobox th, .infobox td { border-top: 0.3pt solid #ccc; }
+/* Images and maps in an infobox get room around them; the 0.6mm of an
+   ordinary row looks cramped against the border. */
+.infobox td.infobox-image { padding: 2mm 2mm 1.5mm; }
 .infobox-above, .infobox-title { font-size: 10pt; text-align: center !important; }
 caption { font-weight: bold; padding-bottom: 1mm; }
 
@@ -238,8 +273,9 @@ ol.references {
 .mw-references-wrap ol.references, .reflist ol.references { font-size: inherit; }
 .references li { text-align: left; hyphens: none; overflow-wrap: anywhere; margin-bottom: 0.6mm; break-inside: avoid; }
 .reflist .mw-references-wrap { columns: auto !important; }
-/* Web addresses, printed after the link text since nothing on paper is clickable. */
-a[data-url]::after {
+/* Web addresses in references and citations, printed after the link text
+   since nothing on paper is clickable. */
+.references a[data-url]::after, cite a[data-url]::after {
   content: " (" attr(data-url) ")";
   overflow-wrap: anywhere;
   hyphens: none;
