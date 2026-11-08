@@ -119,15 +119,18 @@ export const JUSTIFY_PARAGRAPHS = `(() => {
 
   // Hyphenation points, from Chrome's own rules for each language: lay every
   // word out in a box of no width, with hyphens: auto, and see where it breaks.
+  const LETTERS = /\\p{L}+(?:['’]\\p{L}+)*/gu;
   const points = new Map();
   const byLang = new Map();
   for (const { tokens, lang } of work) {
     for (const t of tokens) {
       if (t.kind !== "word") continue;
-      const letters = t.text.replace(/^[^\\p{L}]+|[^\\p{L}]+$/gu, "");
-      if (letters.length < 5 || /[^\\p{L}'’]/u.test(letters)) continue;
-      if (!byLang.has(lang)) byLang.set(lang, new Map());
-      byLang.get(lang).set(lang + "|" + letters, { word: letters, font: t.font });
+      // Each run of letters, so the parts of "well-known" are hyphenated too.
+      for (const m of t.text.matchAll(LETTERS)) {
+        if (m[0].length < 5) continue;
+        if (!byLang.has(lang)) byLang.set(lang, new Map());
+        byLang.get(lang).set(lang + "|" + m[0], { word: m[0], font: t.font });
+      }
     }
   }
   for (const [lang, words] of byLang) {
@@ -175,10 +178,10 @@ export const JUSTIFY_PARAGRAPHS = `(() => {
         seenBox = true;
       } else {
         // A word: split at its hyphenation points and after any hyphens or dashes in it.
-        const lead = t.text.match(/^[^\\p{L}]*/u)[0].length;
-        const letters = t.text.replace(/^[^\\p{L}]+|[^\\p{L}]+$/gu, "");
         const cuts = new Map();
-        for (const c of points.get(lang + "|" + letters) || []) cuts.set(lead + c, "auto");
+        for (const m of t.text.matchAll(LETTERS)) {
+          for (const c of points.get(lang + "|" + m[0]) || []) cuts.set(m.index + c, "auto");
+        }
         for (const m of t.text.matchAll(/[-‐–—]/g)) if (m.index + 1 < t.text.length && m.index > 0) cuts.set(m.index + 1, "hard");
         const offsets = [...cuts.keys()].sort((a, b) => a - b);
         let from = 0;
