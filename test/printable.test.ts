@@ -206,3 +206,10 @@ test("wide images ask for a 960px file when the original is big enough", async (
   expect(html).toContain('src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Neun-Drachen-Mauer.jpg/960px-');
   expect(html).toContain('src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Neun-Drachen-Mauer.jpg/500px-');
 });
+
+test("the table script has every limit written in", async () => {
+  const { fitTables } = await import("../src/worker/tables");
+  const script = fitTables({ columnPx: 425, pageHeightPx: 694 });
+  expect(script).not.toMatch(/\b(MIN_SIDEWAYS_ROWS|FALLBACK_SCALE)\b/);
+  expect(() => new Function(`return ${script.replace(/^\(\(/, "((")}`)).not.toThrow();
+});

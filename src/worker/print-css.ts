@@ -126,6 +126,13 @@ a { color: inherit; text-decoration: none; }
 }
 .booklet-contents .dots::before { content: "${". ".repeat(300)}"; }
 .booklet-contents .num { margin-right: 1.5mm; }
+/* Tighter steps for long contents lists; see fitContents() in contents.ts. */
+.booklet-contents.compact-1 li { margin-bottom: 0.4mm; font-size: 8.5pt; }
+.booklet-contents.compact-1 li.sub { font-size: 7.5pt; }
+.booklet-contents.compact-2 { line-height: 1.25; }
+.booklet-contents.compact-2 li { margin-bottom: 0; font-size: 7.5pt; }
+.booklet-contents.compact-2 li.sub { font-size: 7pt; }
+.booklet-contents.compact-2 .booklet-contents-title { margin-bottom: 2mm; }
 .booklet-contents .n { flex: none; width: 6mm; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Headings */
@@ -228,6 +235,10 @@ li.gallerycaption { flex-basis: 100%; font-weight: bold; }
 
 /* Tables and infoboxes */
 table { border-collapse: collapse; max-width: 100%; font-size: 7.5pt; line-height: 1.3; margin: 3mm 0; }
+/* Pictures in article tables at thumbnail size, so a photo column doesn't force
+   the table wider than the page. Infoboxes keep theirs. */
+:is(td, th) img { max-width: 25mm; height: auto; }
+:is(.infobox, .vcard, .sidebar) :is(td, th) img { max-width: 100%; }
 th, td { padding: 0.6mm 1.2mm; vertical-align: top; text-align: left; overflow-wrap: anywhere; }
 .wikitable th, .wikitable td { border: 0.4pt solid #888; }
 .wikitable th { background: #eee; }
@@ -240,6 +251,10 @@ table.infobox, table.vcard, table.sidebar {
 /* Infoboxes may continue onto the next page (a tall one would otherwise
    leave the page before it nearly empty), but rows stay whole. */
 .infobox tr { break-inside: avoid; }
+/* Cladograms (family trees built from nested tables) overlap where a page
+   break cuts through them; they nearly always fit on a page, so keep each one
+   whole. */
+table.clade { break-inside: avoid; }
 /* A header row stays with the row after it, rather than being left alone at
    the bottom of a page. */
 tr:has(> th[colspan]:only-child), tr:has(> .infobox-header), tr:has(> .infobox-above),
@@ -275,12 +290,17 @@ thead tr:last-child, caption { break-after: avoid; }
 }
 body.grayscale .locmap .od .id::after { background: #000; }
 .infobox th, .infobox td { border-top: 0.3pt solid #ccc; }
-/* Header rows look the same in every infobox: plain grey section headers,
-   no decorative borders or colours (templates add things like thick red and
-   blue frames). Colours in the data cells, such as party colours, stay. */
-.infobox :is(.infobox-header, .infobox-subheader) { background: #eee !important; color: #000 !important; }
-.infobox :is(.infobox-above, .infobox-title, caption) { background: transparent !important; color: #000 !important; }
-.infobox :is(.infobox-header, .infobox-subheader, .infobox-above, .infobox-title, caption) * {
+/* Infobox header rows: no decorative frames (templates add things like thick
+   red and blue borders), and a pale tint of the template's own colour instead
+   of its full-strength one, set by tint.ts. Grey where a box has no colour.
+   These apply once tint.ts has read the original colours (body.tinted).
+   Colours in the data cells, such as party colours, stay. */
+body.tinted .infobox :is(.infobox-header, .infobox-subheader, tr > th[colspan]:only-child:not(.infobox-above, .infobox-title)) {
+  background: #eee !important;
+  color: #000 !important;
+}
+body.tinted .infobox :is(.infobox-above, .infobox-title, caption) { background: transparent !important; color: #000 !important; }
+body.tinted .infobox :is(.infobox-header, .infobox-subheader, tr > th[colspan]:only-child, .infobox-above, .infobox-title, caption) * {
   border: 0 !important;
   background: transparent !important;
   color: inherit !important;

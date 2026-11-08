@@ -37,6 +37,8 @@ const REMOVE = [
   ".Inline-Template",
   "#coordinates",
   ".penicon", // "Edit this on Wikidata" pencils in infoboxes
+  ".taxobox-edit-taxonomy", // "Edit this classification" in taxoboxes
+  'img[resource*="OOjs_UI_icon_edit"]', // any other edit pencil
   '[role="navigation"]',
   // In reference lists, the ↑ / "a b c" links that jump back to where a
   // source was cited. Nowhere to jump to on paper.

@@ -1,5 +1,6 @@
 /**
- * Runs in the rendering browser: sizes groups of pictures so each row comes
+ * Runs in the rendering browser. Removes infobox rows for sound and video
+ * files, and sizes groups of pictures so each row comes
  * out at one height, by giving every picture a share of the width in
  * proportion to its shape (width / height).
  *
@@ -13,6 +14,19 @@ const GALLERY_ROW_MM = 30;
 const GALLERY_MAX_MM = 45;
 
 export const ARRANGE_IMAGES = `(() => {
+  // Infobox rows for a sound or video file (hidden, as they can't play on
+  // paper), with the header row above and a one-cell caption row below.
+  for (const media of document.querySelectorAll(".infobox audio, .infobox video")) {
+    const row = media.closest("tr");
+    if (!row) continue;
+    const before = row.previousElementSibling;
+    const after = row.nextElementSibling;
+    if (before?.cells.length === 1 && before.cells[0].tagName === "TH") before.remove();
+    if (after?.cells.length === 1 && after.cells[0].tagName === "TD" && !after.querySelector("img, table")
+        && after.textContent.trim().length < 80) after.remove();
+    row.remove();
+  }
+
   const shape = (el) => {
     const img = el.querySelector("img");
     const w = Number(img?.getAttribute("width"));
