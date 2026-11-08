@@ -65,7 +65,26 @@ export interface PrintOptions {
 const MIN_LEAD_WIDTH = 600;
 
 /** Images at least this many times wider than tall are printed full width. */
-const WIDE_RATIO = 1.6;
+const WIDE_RATIO = 1.5;
+
+/** Figures the article's editors sized at least this wide (CSS px) are printed full width. */
+const LARGE_FIGURE_PX = 300;
+
+/**
+ * Whether a picture is printed across the full column rather than floated
+ * beside the text. Full width when it is wide; or, for figures, when the
+ * article's editors centred it or made it larger than the default; or when it
+ * is a drawing (map, plan, diagram, chart), whose labels and detail need the
+ * room. Ordinary photos float.
+ */
+export function printFullWidth(width: number, height: number, figureClass?: string, fileType?: string | null): boolean {
+  if (width / height >= WIDE_RATIO) return true;
+  if (figureClass === undefined) return false;
+  const classes = figureClass.split(/\s+/);
+  if (classes.includes("mw-halign-center")) return true;
+  if (!classes.includes("mw-default-size") && width >= LARGE_FIGURE_PX) return true;
+  return fileType === "drawing";
+}
 
 /**
  * Width of the file used for full-width images: about 220 dpi across the
@@ -94,6 +113,7 @@ export async function makePrintable(
   const lead = pageImage && pageImage.width >= MIN_LEAD_WIDTH ? await locateImage(source, pageImage.file) : null;
   let imgCount = -1;
   let figureCount = -1;
+  const figureClasses: string[] = [];
   let leadPlaced = false;
 
   const title = () => decodeEntities(rawTitle).trim() || ref.title;
@@ -136,6 +156,10 @@ export async function makePrintable(
       element(el) {
         figureCount++;
         if (lead && lead.figure === figureCount) el.remove();
+        figureClasses.push(el.getAttribute("class") ?? "");
+        el.onEndTag(() => {
+          figureClasses.pop();
+        });
       },
     })
     .on("img", {
@@ -150,14 +174,18 @@ export async function makePrintable(
         const best = srcset ? largestCandidate(srcset) : null;
         const src = best ?? thumb;
         if (src) el.setAttribute("src", absolute(src, lang));
-        // Wide images are printed across the full column (see print-css.ts),
-        // far bigger than on screen, so ask for a larger file.
+        // Pictures that need the space are printed across the full column
+        // (see print-css.ts), far bigger than on screen, so ask for a larger
+        // file. --ar (aspect ratio) lets CSS cap the height of tall ones.
         const width = Number(el.getAttribute("width"));
         const height = Number(el.getAttribute("height"));
-        if (width > 0 && height > 0 && width / height >= WIDE_RATIO) {
+        const figure = figureClasses.at(-1);
+        if (width > 0 && height > 0 && printFullWidth(width, height, figure, el.getAttribute("data-file-type"))) {
           el.setAttribute("data-wide", "");
+          el.setAttribute("style", `--ar: ${(width / height).toFixed(3)}`);
           const fileWidth = Number(el.getAttribute("data-file-width"));
-          const bigger = thumb && fileWidth > WIDE_IMAGE_PX ? resizedThumb(thumb, WIDE_IMAGE_PX) : null;
+          const scalable = /\.svg\.png(\?|$)/i.test(thumb ?? "");
+          const bigger = thumb && (fileWidth > WIDE_IMAGE_PX || scalable) ? resizedThumb(thumb, WIDE_IMAGE_PX) : null;
           if (bigger) el.setAttribute("src", absolute(bigger, lang));
         }
         el.removeAttribute("srcset");
