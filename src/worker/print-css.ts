@@ -225,8 +225,15 @@ table.infobox, table.vcard, table.sidebar {
    leave the page before it nearly empty), but rows stay whole. */
 .infobox tr { break-inside: avoid; }
 /* Map switchers in infoboxes show one map at a time, with buttons that need
-   Wikipedia's scripts. Print the first map only. */
-.switcher-container > div ~ div, .switcher-label { display: none !important; }
+   Wikipedia's scripts. Print the maps side by side instead, each scaled to
+   share the width. The location markers are placed in percentages, so they
+   stay put as the maps shrink. */
+.switcher-container { display: flex; gap: 3mm; justify-content: center; align-items: flex-start; }
+.switcher-container > div { flex: 1 1 0; min-width: 0; }
+.switcher-container .locmap,
+.switcher-container .locmap div[style*="width"] { width: 100% !important; max-width: 100%; }
+.switcher-container .locmap img { width: 100%; height: auto; }
+.switcher-label { display: none !important; }
 .infobox th, .infobox td { border-top: 0.3pt solid #ccc; }
 .infobox-above, .infobox-title { font-size: 10pt; text-align: center !important; }
 caption { font-weight: bold; padding-bottom: 1mm; }
