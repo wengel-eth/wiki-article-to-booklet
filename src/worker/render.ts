@@ -5,6 +5,7 @@ import { BUILD_CONTENTS, fillContents, fitContents, headingPages, REMOVE_CONTENT
 import { GRAYSCALE_COLORS } from "./grayscale";
 import { TINT_INFOBOXES } from "./tint";
 import { ARRANGE_IMAGES, RETRY_IMAGES } from "./arrange";
+import { JUSTIFY_PARAGRAPHS } from "./justify";
 import { contentBox, FONT_ORIGIN } from "./print-css";
 import { APPEND_FONT_FALLBACKS, scriptFontsCss } from "./script-fonts";
 import { fitTables } from "./tables";
@@ -106,6 +107,7 @@ export async function renderPdf(
     await page.evaluate(GRAYSCALE_COLORS);
     await page.evaluate(ARRANGE_IMAGES);
     await page.evaluate(fitTables(layout));
+    await page.evaluate(JUSTIFY_PARAGRAPHS);
     const entries = (await page.evaluate(BUILD_CONTENTS)) as number;
     if (entries) await page.evaluate(fitContents(layout.pageHeightPx));
     let passes = 1;
