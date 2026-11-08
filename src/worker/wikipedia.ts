@@ -15,6 +15,32 @@ const USER_AGENT =
   "wiki-article-to-booklet/0.1 (https://github.com/wengel-eth/wiki-article-to-booklet)";
 const MAX_HTML_BYTES = 6 * 1024 * 1024;
 
+/** How many times to retry when Wikipedia says to slow down, and the longest wait we'll accept. */
+const RETRIES = 2;
+const MAX_RETRY_WAIT_MS = 5000;
+
+/**
+ * fetch() for Wikipedia. When Wikipedia answers 429 (too many requests from
+ * this address) or 503, wait as long as its Retry-After header asks, up to
+ * MAX_RETRY_WAIT_MS, and try again, as Wikimedia's API etiquette asks.
+ */
+export async function wikiFetch(
+  url: string,
+  init: RequestInit = {},
+  sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
+): Promise<Response> {
+  const headers = { "user-agent": USER_AGENT, "api-user-agent": USER_AGENT, ...init.headers };
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, { ...init, headers });
+    if ((res.status !== 429 && res.status !== 503) || attempt >= RETRIES) return res;
+    const asked = Number(res.headers.get("retry-after"));
+    const wait = Number.isFinite(asked) && asked > 0 ? asked * 1000 : 1000 * (attempt + 1);
+    if (wait > MAX_RETRY_WAIT_MS) return res;
+    await res.body?.cancel();
+    await sleep(wait);
+  }
+}
+
 /** Fetches the article as Parsoid HTML (follows redirects). */
 export async function fetchArticleHtml(ref: ArticleRef): Promise<string> {
   const title = encodeURIComponent(ref.title.replace(/ /g, "_"));
@@ -22,15 +48,13 @@ export async function fetchArticleHtml(ref: ArticleRef): Promise<string> {
 
   let res: Response;
   try {
-    res = await fetch(endpoint, {
-      headers: { "user-agent": USER_AGENT, accept: "text/html" },
-      redirect: "follow",
-    });
+    res = await wikiFetch(endpoint, { headers: { accept: "text/html" }, redirect: "follow" });
   } catch {
     throw new UserError(502, "Couldn't reach Wikipedia. Try again in a moment.");
   }
 
   if (res.status === 404) throw new UserError(404, "That article doesn't exist.");
+  if (res.status === 429) throw new UserError(502, "Wikipedia is limiting requests right now. Try again in a minute.");
   if (!res.ok) throw new UserError(502, `Wikipedia returned an error (${res.status}). Try again in a moment.`);
 
   const declared = Number(res.headers.get("content-length") ?? 0);
@@ -74,9 +98,8 @@ export async function fetchPageImage(ref: ArticleRef): Promise<PageImage | null>
     formatversion: "2",
   });
   try {
-    const res = await fetch(`https://${ref.lang}.wikipedia.org/w/api.php?${params}`, {
-      headers: { "user-agent": USER_AGENT },
-      signal: AbortSignal.timeout(8000),
+    const res = await wikiFetch(`https://${ref.lang}.wikipedia.org/w/api.php?${params}`, {
+      signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) return null;
     const body = (await res.json()) as {

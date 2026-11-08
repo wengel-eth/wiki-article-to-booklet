@@ -37,6 +37,7 @@ const REMOVE = [
   ".mw-empty-elt",
   ".Inline-Template",
   "#coordinates",
+  ".penicon", // "Edit this on Wikidata" pencils in infoboxes
   '[role="navigation"]',
   // In reference lists, the ↑ / "a b c" links that jump back to where a
   // source was cited. Nowhere to jump to on paper.
@@ -65,6 +66,9 @@ const MIN_LEAD_WIDTH = 600;
 
 /** Images at least this many times wider than tall are printed full width. */
 const WIDE_RATIO = 1.6;
+
+/** Template image boxes at least this wide on screen (CSS px) are printed full width. */
+const WIDE_BOX_PX = 300;
 
 // Footnote markers and reference lists, for when references are left out.
 const REFERENCES = ["sup.mw-ref", "sup.reference", ".mw-references-wrap", ".reflist"].join(", ");
@@ -148,6 +152,15 @@ export async function makePrintable(
         el.removeAttribute("decoding");
       },
     })
+    // Image boxes made by templates ({{multiple image}} and older thumbnails)
+    // are <div class="thumb"> with a fixed on-screen width. Mark the wide ones
+    // (images side by side) to keep the full column width; see print-css.ts.
+    .on("div.thumb > .thumbinner[style]", {
+      element(el) {
+        const width = Number(el.getAttribute("style")!.match(/(?:^|;)\s*width:\s*(\d+)px/)?.[1]);
+        if (width >= WIDE_BOX_PX) el.setAttribute("data-wide", "");
+      },
+    })
     .on("source[src]", {
       element(el) {
         el.setAttribute("src", absolute(el.getAttribute("src")!, lang));
@@ -155,8 +168,7 @@ export async function makePrintable(
     })
     .on("source[srcset]", {
       element(el) {
-        const srcset = el.getAttribute("srcset")!
-          .split(",")
+        const srcset = splitSrcset(el.getAttribute("srcset")!)
           .map((entry) => {
             const [url, ...descriptor] = entry.trim().split(/\s+/);
             return [absolute(url, lang), ...descriptor].join(" ");
@@ -318,10 +330,18 @@ export function displayUrl(href: string): string {
     .replace(/\/$/, "");
 }
 
+/**
+ * The candidates in a srcset. They're separated by a comma and a space; a
+ * bare comma can be part of a URL (Wikipedia's map images have them).
+ */
+export function splitSrcset(srcset: string): string[] {
+  return srcset.split(/,\s+/).map((c) => c.trim()).filter(Boolean);
+}
+
 /** The URL with the highest density (2x, 1.5x, ...) in a srcset. */
 export function largestCandidate(srcset: string): string | null {
   let best: { url: string; density: number } | null = null;
-  for (const entry of srcset.split(",")) {
+  for (const entry of splitSrcset(srcset)) {
     const [url, descriptor = "1x"] = entry.trim().split(/\s+/);
     const density = descriptor.endsWith("x") ? Number.parseFloat(descriptor) : Number.NaN;
     if (!url || !Number.isFinite(density)) continue;
