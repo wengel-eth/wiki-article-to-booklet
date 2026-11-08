@@ -236,6 +236,24 @@ table.infobox, table.vcard, table.sidebar {
 .switcher-container .locmap img { width: 100%; height: auto; }
 .switcher-container .locmap > div > div:last-of-type:not([style*="position"]) { text-align: center; }
 .switcher-label { display: none !important; }
+/* Location map markers are small icons (often a dot, sometimes a symbol
+   such as a mine's hammer and pick) that print as a 3mm smudge. Replace them
+   with a crisp dot: a white ring and thin outline keep it visible on any map. */
+.locmap .od .id img { visibility: hidden; }
+.locmap .od .id::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1.6mm;
+  height: 1.6mm;
+  margin: -1.3mm 0 0 -1.3mm;
+  border: 0.5mm solid #fff;
+  border-radius: 50%;
+  background: #b00;
+  box-shadow: 0 0 0 0.3pt #000;
+}
+body.grayscale .locmap .od .id::after { background: #000; }
 .infobox th, .infobox td { border-top: 0.3pt solid #ccc; }
 /* Images and maps in an infobox get room around them; the 0.6mm of an
    ordinary row looks cramped against the border. */
