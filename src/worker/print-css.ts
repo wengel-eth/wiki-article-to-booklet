@@ -105,8 +105,8 @@ a { color: inherit; text-decoration: none; }
   break-after: page;
 }
 .booklet-colophon p { text-align: left; hyphens: none; margin: 0 0 2mm; overflow-wrap: anywhere; }
-.booklet-qr-block { display: flex; align-items: flex-end; gap: 4mm; margin-bottom: 8mm; }
-.booklet-qr { flex: none; }
+.booklet-qr-block { margin-bottom: 8mm; }
+.booklet-qr { display: block; margin: 0 0 2.5mm -0.8mm; }
 .booklet-qr-block p { margin: 0 0 1mm; font-size: 8pt; }
 
 /* Contents */

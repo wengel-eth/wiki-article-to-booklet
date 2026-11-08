@@ -380,7 +380,7 @@ function frontMatter(title: string, ref: ArticleRef, revision: string | null, ge
 </header>
 <aside class="booklet-colophon">
   <div class="booklet-qr-block">
-    ${qrSvg(url, 18)}
+    ${qrSvg(url, 26)}
     <div>
       <p>${escapeHtml(url)}</p>
       <p>Generated ${escapeHtml(generated)}</p>
