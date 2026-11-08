@@ -74,6 +74,9 @@ const WIDE_RATIO = 1.6;
  */
 const WIDE_IMAGE_PX = 960;
 
+/** Infobox pictures at least this wide on screen (CSS px) fill the infobox's width. */
+const INFOBOX_FILL_PX = 200;
+
 /** Template image boxes at least this wide on screen (CSS px) are printed full width. */
 const WIDE_BOX_PX = 300;
 
@@ -95,6 +98,8 @@ export async function makePrintable(
   const lead = pageImage && pageImage.width >= MIN_LEAD_WIDTH ? await locateImage(source, pageImage.file) : null;
   let imgCount = -1;
   let figureCount = -1;
+  let inInfoboxImage = 0;
+  let inLocationMap = 0;
   let leadPlaced = false;
 
   const title = () => decodeEntities(rawTitle).trim() || ref.title;
@@ -139,6 +144,23 @@ export async function makePrintable(
         if (lead && lead.figure === figureCount) el.remove();
       },
     })
+    // Where an image sits matters for its size: see the img handler.
+    .on("td.infobox-image, th.infobox-image", {
+      element(el) {
+        inInfoboxImage++;
+        el.onEndTag(() => {
+          inInfoboxImage--;
+        });
+      },
+    })
+    .on(".locmap", {
+      element(el) {
+        inLocationMap++;
+        el.onEndTag(() => {
+          inLocationMap--;
+        });
+      },
+    })
     .on("img", {
       element(el) {
         imgCount++;
@@ -154,12 +176,20 @@ export async function makePrintable(
         // If the sharper file fails to load, the page falls back to the
         // thumbnail; see RETRY_IMAGES in arrange.ts.
         if (thumb && src !== thumb) el.setAttribute("data-fallback", absolute(thumb, lang));
-        // Wide images are printed across the full column (see print-css.ts),
-        // far bigger than on screen, so ask for a larger file.
+        // Some images print far bigger than on screen, so ask for a larger
+        // file: wide images go across the full column, and an infobox's main
+        // pictures (not small ones such as coats of arms or flags, nor
+        // location maps) fill the infobox's width. See print-css.ts.
         const width = Number(el.getAttribute("width"));
         const height = Number(el.getAttribute("height"));
-        if (width > 0 && height > 0 && width / height >= WIDE_RATIO) {
-          el.setAttribute("data-wide", "");
+        const wide = width > 0 && height > 0 && width / height >= WIDE_RATIO;
+        const fill = inInfoboxImage > 0 && inLocationMap === 0 && width >= INFOBOX_FILL_PX && height > 0;
+        if (wide) el.setAttribute("data-wide", "");
+        if (fill) {
+          el.setAttribute("data-fill", "");
+          el.setAttribute("style", `--ar: ${(width / height).toFixed(3)}`);
+        }
+        if (wide || fill) {
           const fileWidth = Number(el.getAttribute("data-file-width"));
           const bigger = thumb && fileWidth > WIDE_IMAGE_PX ? resizedThumb(thumb, WIDE_IMAGE_PX) : null;
           if (bigger) {

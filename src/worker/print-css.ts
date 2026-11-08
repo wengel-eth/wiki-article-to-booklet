@@ -217,6 +217,16 @@ figure img, .thumb img {
 .infobox tr:has(> .infobox-image):not(:has(img)) { display: none; }
 figcaption, .thumbcaption { font-size: 7pt; line-height: 1.3; text-align: left; hyphens: auto; margin-top: 1mm; }
 .infobox img { max-height: ${Math.round(page.height * 0.22)}mm; object-fit: contain; }
+/* An infobox's main pictures fill its width, centred; tall ones are capped
+   at 30% of the page height and narrowed to keep their shape (--ar is the
+   aspect ratio, set in printable.ts). */
+.infobox img[data-fill] {
+  display: block;
+  margin: 0 auto;
+  width: min(100%, calc(var(--ar) * ${Math.round(page.height * 0.3)}mm));
+  height: auto;
+  max-height: none;
+}
 /* Galleries: rows of pictures at the same height, filling the width.
    arrange.ts sizes each picture by its shape. */
 ul.gallery { list-style: none; padding: 0; margin: 3mm 0; display: flex; flex-wrap: wrap; gap: 2mm; clear: both; }
