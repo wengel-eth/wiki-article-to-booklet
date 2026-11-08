@@ -79,7 +79,16 @@ html {
   print-color-adjust: exact;
 }
 body { margin: 0; }
-p, li, dd { text-align: justify; hyphens: auto; orphans: 3; widows: 3; }
+/* Justified, with Chrome's better wrapping at the ends of paragraphs.
+   Paragraphs beside a picture, where the column is narrow, are set ragged
+   right instead; see RAG_BESIDE_FLOATS in arrange.ts. */
+p, li, dd {
+  text-align: justify;
+  hyphens: auto;
+  text-wrap: pretty;
+  orphans: 3;
+  widows: 3;
+}
 a { color: inherit; text-decoration: none; }
 
 /* Chinese, Japanese and Korean text marked with its language */
