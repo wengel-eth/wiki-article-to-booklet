@@ -167,6 +167,11 @@ figure img[data-wide] { width: 100%; }
 /* Videos and sound files can't play on paper. */
 figure:has(video, audio), div.thumb:has(video, audio), video, audio { display: none !important; }
 
+/* Static maps (Kartographer mapframes) are inline links; as a block, their
+   caption goes underneath instead of beside them. */
+a.mw-kartographer-map { display: block; width: fit-content; max-width: 100%; margin: 1mm auto; }
+a.mw-kartographer-map img { display: block; }
+
 /* Image boxes made by templates ({{multiple image}}, older thumbnails):
    <div class="thumb"> with fixed on-screen widths. Wikipedia's own stylesheet
    floats them, and it isn't loaded here, so float them like figures and let
@@ -344,6 +349,25 @@ ol.references {
 .mw-references-wrap ol.references, .reflist ol.references { font-size: inherit; }
 .references li { text-align: left; hyphens: none; overflow-wrap: anywhere; margin-bottom: 0.6mm; break-inside: avoid; }
 .reflist .mw-references-wrap { columns: auto !important; }
+/* Bibliographies ("Sources", "Further reading") made with {{refbegin}}, or
+   any list of citations: set like the references, small, in two columns,
+   left-aligned so long addresses don't stretch the word spacing. */
+:is(.refbegin, ul:has(> li > cite.citation)) {
+  font-size: 6.5pt;
+  line-height: 1.3;
+  columns: 2 !important;
+  column-gap: 5mm;
+}
+:is(.refbegin, ul:has(> li > cite.citation)) ul { margin: 0; }
+/* Only the outer box splits into columns, not the list inside it too. */
+.refbegin :is(ul, ul:has(> li > cite.citation)) { columns: auto !important; font-size: inherit; }
+:is(.refbegin, ul:has(> li > cite.citation)) li {
+  text-align: left;
+  hyphens: none;
+  overflow-wrap: anywhere;
+  margin-bottom: 0.6mm;
+  break-inside: avoid;
+}
 /* Web addresses in references and citations, printed after the link text
    since nothing on paper is clickable. */
 .references a[data-url]::after, cite a[data-url]::after {
