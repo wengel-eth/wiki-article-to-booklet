@@ -30,7 +30,7 @@ test("makePrintable cleans up and adds front matter", async () => {
   // No <base>: image URLs are made absolute instead, and links are dropped.
   expect(html).not.toContain("<base");
   // The 2x image from srcset becomes the image; srcset is dropped.
-  expect(html).toContain('<img src="https://upload.wikimedia.org/x2.jpg" width="250" height="200" />');
+  expect(html).toContain('<img src="https://upload.wikimedia.org/x2.jpg" width="250" height="200" data-fallback="https://upload.wikimedia.org/x.jpg" />');
   expect(html).not.toContain("srcset");
   expect(html).not.toContain('href="./File:X.jpg"');
   expect(html).not.toContain("<script");
@@ -100,7 +100,7 @@ test("wide images are marked to keep the full width", async () => {
   );
   const { html } = await makePrintable(src, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
   expect(html).toContain('<img src="https://upload.wikimedia.org/pano.jpg" width="500" height="200" data-wide="" />');
-  expect(html).toContain('<img src="https://upload.wikimedia.org/x2.jpg" width="250" height="200" />');
+  expect(html).toContain('<img src="https://upload.wikimedia.org/x2.jpg" width="250" height="200" data-fallback="https://upload.wikimedia.org/x.jpg" />');
 });
 
 test("fitTables embeds the page layout and its stylesheet is in the print CSS", async () => {

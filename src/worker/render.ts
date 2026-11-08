@@ -4,7 +4,7 @@ import type { ServerEvent } from "../shared/progress";
 import { BUILD_CONTENTS, fillContents, fitContents, headingPages, REMOVE_CONTENTS } from "./contents";
 import { GRAYSCALE_COLORS } from "./grayscale";
 import { TINT_INFOBOXES } from "./tint";
-import { ARRANGE_IMAGES } from "./arrange";
+import { ARRANGE_IMAGES, RETRY_IMAGES } from "./arrange";
 import { contentBox, FONT_ORIGIN } from "./print-css";
 import { fitTables } from "./tables";
 
@@ -88,6 +88,7 @@ export async function renderPdf(
     }
 
     progress({ stage: "layout" });
+    await page.evaluate(RETRY_IMAGES);
     await page.evaluate(TINT_INFOBOXES);
     await page.evaluate(GRAYSCALE_COLORS);
     await page.evaluate(ARRANGE_IMAGES);

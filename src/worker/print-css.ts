@@ -305,8 +305,17 @@ body.tinted .infobox :is(.infobox-header, .infobox-subheader, tr > th[colspan]:o
   background: transparent !important;
   color: inherit !important;
 }
-/* Tables nested in an infobox (such as a box of transcriptions) fill it. */
-.infobox table { width: 100% !important; margin: 0 !important; }
+/* Tables nested in an infobox (such as a box of transcriptions) read as part
+   of it: edge to edge in their cell, without a frame of their own, and with
+   the same label column width, so values line up with the box's own rows. */
+.infobox table {
+  display: table !important;
+  width: 100% !important;
+  margin: 0 !important;
+  border: 0 !important;
+}
+.infobox td:has(> table) { padding: 0 !important; }
+.infobox th.infobox-label { width: 36%; }
 /* Images and maps in an infobox get room around them; the 0.6mm of an
    ordinary row looks cramped against the border. */
 .infobox td.infobox-image { padding: 2mm 2mm 1.5mm; }

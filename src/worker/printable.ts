@@ -151,6 +151,9 @@ export async function makePrintable(
         const best = srcset ? largestCandidate(srcset) : null;
         const src = best ?? thumb;
         if (src) el.setAttribute("src", absolute(src, lang));
+        // If the sharper file fails to load, the page falls back to the
+        // thumbnail; see RETRY_IMAGES in arrange.ts.
+        if (thumb && src !== thumb) el.setAttribute("data-fallback", absolute(thumb, lang));
         // Wide images are printed across the full column (see print-css.ts),
         // far bigger than on screen, so ask for a larger file.
         const width = Number(el.getAttribute("width"));
@@ -159,7 +162,10 @@ export async function makePrintable(
           el.setAttribute("data-wide", "");
           const fileWidth = Number(el.getAttribute("data-file-width"));
           const bigger = thumb && fileWidth > WIDE_IMAGE_PX ? resizedThumb(thumb, WIDE_IMAGE_PX) : null;
-          if (bigger) el.setAttribute("src", absolute(bigger, lang));
+          if (bigger) {
+            el.setAttribute("src", absolute(bigger, lang));
+            if (thumb) el.setAttribute("data-fallback", absolute(thumb, lang));
+          }
         }
         el.removeAttribute("srcset");
         el.removeAttribute("loading");

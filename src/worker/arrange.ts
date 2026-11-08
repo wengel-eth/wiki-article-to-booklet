@@ -48,3 +48,42 @@ export const ARRANGE_IMAGES = `(() => {
     item.style.maxWidth = (ratio * ${GALLERY_MAX_MM}) + "mm";
   }
 })()`;
+
+/**
+ * Images are printed from sharper files than the article's thumbnails. If one
+ * of those failed to load (Wikimedia's image servers sometimes turn requests
+ * away), go back to the thumbnail, which is usually cached and loads: a
+ * softer picture beats a broken box. Waits for the retries, up to
+ * RETRY_WAIT_MS. Images still broken after that are hidden, with their frame.
+ * Evaluates to the number retried plus the number hidden.
+ */
+const RETRY_WAIT_MS = 10_000;
+
+export const RETRY_IMAGES = `(async () => {
+  const failed = [...document.querySelectorAll("img[data-fallback]")]
+    .filter((img) => img.complete && img.naturalWidth === 0);
+  await Promise.race([
+    Promise.all(failed.map((img) => new Promise((done) => {
+      img.addEventListener("load", done, { once: true });
+      img.addEventListener("error", done, { once: true });
+      img.src = img.dataset.fallback;
+    }))),
+    new Promise((done) => setTimeout(done, ${RETRY_WAIT_MS})),
+  ]);
+  // Anything still broken is left out, with its frame, rather than printed
+  // as an empty box.
+  let hidden = 0;
+  for (const img of document.querySelectorAll("img")) {
+    if (!img.complete || img.naturalWidth > 0) continue;
+    const frame = img.closest("figure, .gallerybox, .mw-kartographer-map, .thumb, .booklet-lead") ?? img;
+    frame.style.display = "none";
+    // A table row (an infobox image row, say) left with nothing to show goes too.
+    const cell = frame.closest("td, th");
+    const showsSomething = (el) => el.innerText.trim() || [...el.querySelectorAll("img")].some((i) => i.getClientRects().length);
+    if (cell && !showsSomething(cell)) {
+      cell.closest("tr").style.display = "none";
+    }
+    hidden++;
+  }
+  return failed.length + hidden;
+})()`;
