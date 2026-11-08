@@ -103,25 +103,3 @@ export const RETRY_IMAGES = `(async () => {
   return failed.length + hidden;
 })()`;
 
-/**
- * Runs in the rendering browser. Lines beside a floated picture are narrow,
- * and justified narrow lines get wide gaps between words. Paragraphs and list
- * items that sit beside a float are set ragged right instead, as books do
- * with narrow columns. Evaluates to the number changed.
- */
-export const RAG_BESIDE_FLOATS = `(() => {
-  const floats = [...document.querySelectorAll("figure, div.thumb, table")]
-    .filter((el) => getComputedStyle(el).float !== "none")
-    .map((el) => el.getBoundingClientRect());
-  let changed = 0;
-  for (const block of document.querySelectorAll("p, li, dd")) {
-    if (getComputedStyle(block).textAlign !== "justify") continue;
-    const r = block.getBoundingClientRect();
-    const beside = floats.some((f) => f.top < r.bottom && f.bottom > r.top && f.left < r.right && f.right > r.left);
-    if (beside) {
-      block.style.textAlign = "left";
-      changed++;
-    }
-  }
-  return changed;
-})()`;

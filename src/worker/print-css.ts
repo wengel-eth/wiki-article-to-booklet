@@ -79,9 +79,8 @@ html {
   print-color-adjust: exact;
 }
 body { margin: 0; }
-/* Justified, with Chrome's better wrapping at the ends of paragraphs.
-   Paragraphs beside a picture, where the column is narrow, are set ragged
-   right instead; see RAG_BESIDE_FLOATS in arrange.ts. */
+/* Justified. Paragraphs are re-broken with Knuth-Plass for even spacing in
+   the rendering page (justify.ts); these settings apply where they aren't. */
 p, li, dd {
   text-align: justify;
   hyphens: auto;
@@ -278,6 +277,9 @@ li.gallerycaption { flex-basis: 100%; font-weight: bold; }
 .mwe-math-mathml-a11y { display: none; }
 
 /* Tables and infoboxes */
+/* Article tables start below any floated picture: beside one, they were
+   squeezed to half the column, with words wrapping a few letters a line. */
+table:not(.infobox, .vcard, .sidebar, .clade) { clear: both; }
 table { border-collapse: collapse; max-width: 100%; font-size: 7.5pt; line-height: 1.3; margin: 3mm 0; }
 /* Pictures in article tables at thumbnail size, so a photo column doesn't force
    the table wider than the page. Infoboxes keep theirs. */
