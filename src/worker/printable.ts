@@ -34,10 +34,11 @@ const REMOVE = [
   ".hatnote",
   ".shortdescription",
   ".mw-editsection",
-  ".mw-empty-elt",
   ".Inline-Template",
   "#coordinates",
   ".penicon", // "Edit this on Wikidata" pencils in infoboxes
+  ".taxobox-edit-taxonomy", // "Edit this classification" in taxoboxes
+  'img[resource*="OOjs_UI_icon_edit"]', // any other edit pencil
   '[role="navigation"]',
   // In reference lists, the ↑ / "a b c" links that jump back to where a
   // source was cited. Nowhere to jump to on paper.
@@ -67,6 +68,15 @@ const MIN_LEAD_WIDTH = 600;
 /** Images at least this many times wider than tall are printed full width. */
 const WIDE_RATIO = 1.6;
 
+/**
+ * Width of the file used for full-width images: about 220 dpi across the
+ * column. One of Wikimedia's standard thumbnail sizes.
+ */
+const WIDE_IMAGE_PX = 960;
+
+/** Infobox pictures at least this wide on screen (CSS px) fill the infobox's width. */
+const INFOBOX_FILL_PX = 200;
+
 /** Template image boxes at least this wide on screen (CSS px) are printed full width. */
 const WIDE_BOX_PX = 300;
 
@@ -88,6 +98,8 @@ export async function makePrintable(
   const lead = pageImage && pageImage.width >= MIN_LEAD_WIDTH ? await locateImage(source, pageImage.file) : null;
   let imgCount = -1;
   let figureCount = -1;
+  let inInfoboxImage = 0;
+  let inLocationMap = 0;
   let leadPlaced = false;
 
   const title = () => decodeEntities(rawTitle).trim() || ref.title;
@@ -132,6 +144,23 @@ export async function makePrintable(
         if (lead && lead.figure === figureCount) el.remove();
       },
     })
+    // Where an image sits matters for its size: see the img handler.
+    .on("td.infobox-image, th.infobox-image", {
+      element(el) {
+        inInfoboxImage++;
+        el.onEndTag(() => {
+          inInfoboxImage--;
+        });
+      },
+    })
+    .on(".locmap", {
+      element(el) {
+        inLocationMap++;
+        el.onEndTag(() => {
+          inLocationMap--;
+        });
+      },
+    })
     .on("img", {
       element(el) {
         imgCount++;
@@ -139,14 +168,35 @@ export async function makePrintable(
           el.remove();
           return;
         }
+        const thumb = el.getAttribute("src");
         const srcset = el.getAttribute("srcset");
         const best = srcset ? largestCandidate(srcset) : null;
-        const src = best ?? el.getAttribute("src");
+        const src = best ?? thumb;
         if (src) el.setAttribute("src", absolute(src, lang));
-        // Wide images keep the full column width; see print-css.ts.
+        // If the sharper file fails to load, the page falls back to the
+        // thumbnail; see RETRY_IMAGES in arrange.ts.
+        if (thumb && src !== thumb) el.setAttribute("data-fallback", absolute(thumb, lang));
+        // Some images print far bigger than on screen, so ask for a larger
+        // file: wide images go across the full column, and an infobox's main
+        // pictures (not small ones such as coats of arms or flags, nor
+        // location maps) fill the infobox's width. See print-css.ts.
         const width = Number(el.getAttribute("width"));
         const height = Number(el.getAttribute("height"));
-        if (width > 0 && height > 0 && width / height >= WIDE_RATIO) el.setAttribute("data-wide", "");
+        const wide = width > 0 && height > 0 && width / height >= WIDE_RATIO;
+        const fill = inInfoboxImage > 0 && inLocationMap === 0 && width >= INFOBOX_FILL_PX && height > 0;
+        if (wide) el.setAttribute("data-wide", "");
+        if (fill) {
+          el.setAttribute("data-fill", "");
+          el.setAttribute("style", `--ar: ${(width / height).toFixed(3)}`);
+        }
+        if (wide || fill) {
+          const fileWidth = Number(el.getAttribute("data-file-width"));
+          const bigger = thumb && fileWidth > WIDE_IMAGE_PX ? resizedThumb(thumb, WIDE_IMAGE_PX) : null;
+          if (bigger) {
+            el.setAttribute("src", absolute(bigger, lang));
+            if (thumb) el.setAttribute("data-fallback", absolute(thumb, lang));
+          }
+        }
         el.removeAttribute("srcset");
         el.removeAttribute("loading");
         el.removeAttribute("decoding");
@@ -336,6 +386,17 @@ export function displayUrl(href: string): string {
  */
 export function splitSrcset(srcset: string): string[] {
   return srcset.split(/,\s+/).map((c) => c.trim()).filter(Boolean);
+}
+
+/**
+ * The same Wikimedia thumbnail at another width:
+ * .../thumb/a/ab/X.jpg/250px-X.jpg?q  ->  .../thumb/a/ab/X.jpg/960px-X.jpg?q
+ * Null for anything else, or if it wouldn't be bigger.
+ */
+export function resizedThumb(url: string, width: number): string | null {
+  const m = url.match(/^(.*\/thumb\/.+\/)(\d+)px-([^/?]+)(\?.*)?$/);
+  if (!m || Number(m[2]) >= width) return null;
+  return `${m[1]}${width}px-${m[3]}${m[4] ?? ""}`;
 }
 
 /** The URL with the highest density (2x, 1.5x, ...) in a srcset. */

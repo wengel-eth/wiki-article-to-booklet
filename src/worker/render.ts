@@ -1,9 +1,10 @@
 import puppeteer, { type BrowserWorker, type Page } from "@cloudflare/puppeteer";
 import type { PaperId } from "../shared/paper";
 import type { ServerEvent } from "../shared/progress";
-import { BUILD_CONTENTS, fillContents, headingPages, REMOVE_CONTENTS } from "./contents";
+import { BUILD_CONTENTS, fillContents, fitContents, headingPages, REMOVE_CONTENTS } from "./contents";
 import { GRAYSCALE_COLORS } from "./grayscale";
-import { ARRANGE_MAPS } from "./maps";
+import { TINT_INFOBOXES } from "./tint";
+import { ARRANGE_IMAGES, RETRY_IMAGES } from "./arrange";
 import { contentBox, FONT_ORIGIN } from "./print-css";
 import { fitTables } from "./tables";
 
@@ -87,10 +88,13 @@ export async function renderPdf(
     }
 
     progress({ stage: "layout" });
+    await page.evaluate(RETRY_IMAGES);
+    await page.evaluate(TINT_INFOBOXES);
     await page.evaluate(GRAYSCALE_COLORS);
-    await page.evaluate(ARRANGE_MAPS);
+    await page.evaluate(ARRANGE_IMAGES);
     await page.evaluate(fitTables(layout));
     const entries = (await page.evaluate(BUILD_CONTENTS)) as number;
+    if (entries) await page.evaluate(fitContents(layout.pageHeightPx));
     let passes = 1;
     progress({ stage: "printing", pass: passes });
     let pdf = await print(page);

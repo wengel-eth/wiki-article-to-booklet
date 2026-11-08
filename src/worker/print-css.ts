@@ -126,6 +126,13 @@ a { color: inherit; text-decoration: none; }
 }
 .booklet-contents .dots::before { content: "${". ".repeat(300)}"; }
 .booklet-contents .num { margin-right: 1.5mm; }
+/* Tighter steps for long contents lists; see fitContents() in contents.ts. */
+.booklet-contents.compact-1 li { margin-bottom: 0.4mm; font-size: 8.5pt; }
+.booklet-contents.compact-1 li.sub { font-size: 7.5pt; }
+.booklet-contents.compact-2 { line-height: 1.25; }
+.booklet-contents.compact-2 li { margin-bottom: 0; font-size: 7.5pt; }
+.booklet-contents.compact-2 li.sub { font-size: 7pt; }
+.booklet-contents.compact-2 .booklet-contents-title { margin-bottom: 2mm; }
 .booklet-contents .n { flex: none; width: 6mm; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Headings */
@@ -155,13 +162,17 @@ figure:not(:has(img[data-wide])) {
   margin: 0.8mm 0 2mm 4mm;
 }
 figure:has(img[data-wide]) { margin: 3mm 0; text-align: center; }
+figure img[data-wide] { width: 100%; }
+
+/* Videos and sound files can't play on paper. */
+figure:has(video, audio), div.thumb:has(video, audio), video, audio { display: none !important; }
 
 /* Image boxes made by templates ({{multiple image}}, older thumbnails):
    <div class="thumb"> with fixed on-screen widths. Wikipedia's own stylesheet
    floats them, and it isn't loaded here, so float them like figures and let
    the images inside scale to fit. Boxes of images side by side stay full
    width (printable.ts marks them). */
-div.thumb {
+div.thumb:not(.gallerybox .thumb) {
   float: right;
   clear: right;
   width: fit-content;
@@ -206,12 +217,38 @@ figure img, .thumb img {
 .infobox tr:has(> .infobox-image):not(:has(img)) { display: none; }
 figcaption, .thumbcaption { font-size: 7pt; line-height: 1.3; text-align: left; hyphens: auto; margin-top: 1mm; }
 .infobox img { max-height: ${Math.round(page.height * 0.22)}mm; object-fit: contain; }
-ul.gallery { list-style: none; padding: 0; margin: 3mm 0; display: flex; flex-wrap: wrap; gap: 2mm; justify-content: center; clear: both; }
-ul.gallery li { break-inside: avoid; max-width: 31%; font-size: 7pt; line-height: 1.3; }
+/* An infobox's main pictures fill its width, centred; tall ones are capped
+   at 30% of the page height and narrowed to keep their shape (--ar is the
+   aspect ratio, set in printable.ts). */
+.infobox img[data-fill] {
+  display: block;
+  margin: 0 auto;
+  width: min(100%, calc(var(--ar) * ${Math.round(page.height * 0.3)}mm));
+  height: auto;
+  max-height: none;
+}
+/* Galleries: rows of pictures at the same height, filling the width.
+   arrange.ts sizes each picture by its shape. */
+ul.gallery { list-style: none; padding: 0; margin: 3mm 0; display: flex; flex-wrap: wrap; gap: 2mm; clear: both; }
+ul.gallery li.gallerybox {
+  break-inside: avoid;
+  width: auto !important;
+  margin: 0;
+  font-size: 7pt;
+  line-height: 1.3;
+}
+ul.gallery .gallerybox .thumb { width: auto !important; height: auto !important; margin: 0; padding: 0; border: 0; }
+ul.gallery .gallerybox img { display: block; width: 100%; height: auto; }
+ul.gallery .gallerytext { margin-top: 0.8mm; text-align: left; hyphens: auto; }
+li.gallerycaption { flex-basis: 100%; font-weight: bold; }
 .mwe-math-mathml-a11y { display: none; }
 
 /* Tables and infoboxes */
 table { border-collapse: collapse; max-width: 100%; font-size: 7.5pt; line-height: 1.3; margin: 3mm 0; }
+/* Pictures in article tables at thumbnail size, so a photo column doesn't force
+   the table wider than the page. Infoboxes keep theirs. */
+:is(td, th) img { max-width: 25mm; height: auto; }
+:is(.infobox, .vcard, .sidebar) :is(td, th) img { max-width: 100%; }
 th, td { padding: 0.6mm 1.2mm; vertical-align: top; text-align: left; overflow-wrap: anywhere; }
 .wikitable th, .wikitable td { border: 0.4pt solid #888; }
 .wikitable th { background: #eee; }
@@ -224,8 +261,16 @@ table.infobox, table.vcard, table.sidebar {
 /* Infoboxes may continue onto the next page (a tall one would otherwise
    leave the page before it nearly empty), but rows stay whole. */
 .infobox tr { break-inside: avoid; }
+/* Cladograms (family trees built from nested tables) overlap where a page
+   break cuts through them; they nearly always fit on a page, so keep each one
+   whole. */
+table.clade { break-inside: avoid; }
+/* A header row stays with the row after it, rather than being left alone at
+   the bottom of a page. */
+tr:has(> th[colspan]:only-child), tr:has(> .infobox-header), tr:has(> .infobox-above),
+thead tr:last-child, caption { break-after: avoid; }
 /* Map switchers in infoboxes show one map at a time, with buttons that need
-   Wikipedia's scripts. Print the maps side by side instead. maps.ts gives
+   Wikipedia's scripts. Print the maps side by side instead. arrange.ts gives
    each a share of the width in proportion to its shape, so they come out
    the same height with captions in line. The location markers are placed
    in percentages, so they stay put as the maps shrink. */
@@ -255,6 +300,32 @@ table.infobox, table.vcard, table.sidebar {
 }
 body.grayscale .locmap .od .id::after { background: #000; }
 .infobox th, .infobox td { border-top: 0.3pt solid #ccc; }
+/* Infobox header rows: no decorative frames (templates add things like thick
+   red and blue borders), and a pale tint of the template's own colour instead
+   of its full-strength one, set by tint.ts. Grey where a box has no colour.
+   These apply once tint.ts has read the original colours (body.tinted).
+   Colours in the data cells, such as party colours, stay. */
+body.tinted .infobox :is(.infobox-header, .infobox-subheader, tr > th[colspan]:only-child:not(.infobox-above, .infobox-title)) {
+  background: #eee !important;
+  color: #000 !important;
+}
+body.tinted .infobox :is(.infobox-above, .infobox-title, caption) { background: transparent !important; color: #000 !important; }
+body.tinted .infobox :is(.infobox-header, .infobox-subheader, tr > th[colspan]:only-child, .infobox-above, .infobox-title, caption) * {
+  border: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+}
+/* Tables nested in an infobox (such as a box of transcriptions) read as part
+   of it: edge to edge in their cell, without a frame of their own, and with
+   the same label column width, so values line up with the box's own rows. */
+.infobox table {
+  display: table !important;
+  width: 100% !important;
+  margin: 0 !important;
+  border: 0 !important;
+}
+.infobox td:has(> table) { padding: 0 !important; }
+.infobox th.infobox-label { width: 36%; }
 /* Images and maps in an infobox get room around them; the 0.6mm of an
    ordinary row looks cramped against the border. */
 .infobox td.infobox-image { padding: 2mm 2mm 1.5mm; }
@@ -306,6 +377,10 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* Wide and long tables; see tables.ts */
 ${TABLE_CSS}
+
+/* Parsoid's empty placeholders. Hidden rather than removed: some hold the
+   template styles that other parts of the page need. */
+.mw-empty-elt { display: none !important; }
 
 /* Sections that don't belong on paper */
 section:has(> h2#External_links, > .mw-heading > h2#External_links),

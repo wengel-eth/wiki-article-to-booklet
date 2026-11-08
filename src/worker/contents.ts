@@ -94,6 +94,21 @@ export function fillContents(pages: Record<string, number>): string {
 })(${JSON.stringify(pages)})`;
 }
 
+/**
+ * Evaluates to how many steps the contents page had to be tightened (0-2) to
+ * fit on one page, rather than spilling a line or two onto a second. The page
+ * is laid out at the column width, so heights match print.
+ */
+export function fitContents(pageHeightPx: number): string {
+  return `(() => {
+  const nav = document.querySelector(".booklet-contents");
+  if (!nav) return 0;
+  let step = 0;
+  while (nav.getBoundingClientRect().height > ${pageHeightPx} && step < 2) nav.classList.add("compact-" + ++step);
+  return step;
+})()`;
+}
+
 export const REMOVE_CONTENTS = `document.querySelector(".booklet-contents")?.remove()`;
 
 /** Maps each toc-N destination in a Chrome-printed PDF to its 1-based page number. */

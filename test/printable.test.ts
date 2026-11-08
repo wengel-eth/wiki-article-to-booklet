@@ -30,7 +30,7 @@ test("makePrintable cleans up and adds front matter", async () => {
   // No <base>: image URLs are made absolute instead, and links are dropped.
   expect(html).not.toContain("<base");
   // The 2x image from srcset becomes the image; srcset is dropped.
-  expect(html).toContain('<img src="https://upload.wikimedia.org/x2.jpg" width="250" height="200" />');
+  expect(html).toContain('<img src="https://upload.wikimedia.org/x2.jpg" width="250" height="200" data-fallback="https://upload.wikimedia.org/x.jpg" />');
   expect(html).not.toContain("srcset");
   expect(html).not.toContain('href="./File:X.jpg"');
   expect(html).not.toContain("<script");
@@ -100,7 +100,7 @@ test("wide images are marked to keep the full width", async () => {
   );
   const { html } = await makePrintable(src, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
   expect(html).toContain('<img src="https://upload.wikimedia.org/pano.jpg" width="500" height="200" data-wide="" />');
-  expect(html).toContain('<img src="https://upload.wikimedia.org/x2.jpg" width="250" height="200" />');
+  expect(html).toContain('<img src="https://upload.wikimedia.org/x2.jpg" width="250" height="200" data-fallback="https://upload.wikimedia.org/x.jpg" />');
 });
 
 test("fitTables embeds the page layout and its stylesheet is in the print CSS", async () => {
@@ -190,4 +190,26 @@ test("template image boxes wider than 300px on screen are marked to keep the ful
   const { html } = await makePrintable(src, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
   expect(html).toContain('style="width:204px;max-width:204px">');
   expect(html).toContain('style="width:404px;max-width:404px" data-wide="">');
+});
+
+test("wide images ask for a 960px file when the original is big enough", async () => {
+  const { resizedThumb } = await import("../src/worker/printable");
+  const t = "//thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Neun-Drachen-Mauer.jpg/250px-Neun-Drachen-Mauer.jpg?utm_source=x";
+  expect(resizedThumb(t, 960)).toBe("//thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Neun-Drachen-Mauer.jpg/960px-Neun-Drachen-Mauer.jpg?utm_source=x");
+  expect(resizedThumb("//upload.wikimedia.org/wikipedia/commons/4/4b/X.jpg", 960)).toBeNull();
+  expect(resizedThumb(t.replace("250px", "1280px"), 960)).toBeNull();
+
+  const fig = (fileWidth: number) =>
+    `<figure typeof="mw:File/Thumb"><img src="${t}" srcset="${t.replace("250px", "500px")} 2x" data-file-width="${fileWidth}" width="250" height="133"/></figure>`;
+  const src = PARSOID.replace("<p data-mw", `${fig(2311)}${fig(600)}<p data-mw`);
+  const { html } = await makePrintable(src, { lang: "en", title: "X" }, { paper: "a4", references: true, grayscale: false });
+  expect(html).toContain('src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Neun-Drachen-Mauer.jpg/960px-');
+  expect(html).toContain('src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Neun-Drachen-Mauer.jpg/500px-');
+});
+
+test("the table script has every limit written in", async () => {
+  const { fitTables } = await import("../src/worker/tables");
+  const script = fitTables({ columnPx: 425, pageHeightPx: 694 });
+  expect(script).not.toMatch(/\b(MIN_SIDEWAYS_ROWS|FALLBACK_SCALE)\b/);
+  expect(() => new Function(`return ${script.replace(/^\(\(/, "((")}`)).not.toThrow();
 });

@@ -19,6 +19,15 @@ const MIN_SCALE = 0.7;
 /** How much wider than its narrowest possible layout a table should be, to look comfortable. */
 const COMFORT = 1.3;
 
+/**
+ * Sideways pages pay off for tables that are wide from many short columns.
+ * A text-heavy table would fit only a row or two per turned page; below this
+ * many rows per page it is shrunk instead, as far as FALLBACK_SCALE, with
+ * long words allowed to wrap.
+ */
+const MIN_SIDEWAYS_ROWS = 4;
+const FALLBACK_SCALE = 0.55;
+
 export interface TableLayout {
   /** Width of the text column, in CSS px. */
   columnPx: number;
@@ -34,6 +43,7 @@ table.bk-measure-max { width: max-content !important; max-width: none !important
   hyphens: manual;
 }
 table.bk-shrunk, .bk-sideways table { max-width: none; }
+table.bk-squeezed :is(th, td) { overflow-wrap: anywhere; hyphens: auto; }
 .bk-sideways {
   break-before: page;
   break-after: page;
@@ -110,6 +120,21 @@ export function fitTables(layout: TableLayout): string {
     // 3. Sideways, on pages of its own. Across the turned page there is
     // pageHeightPx of width, and down it columnPx of height.
     const sideScale = Math.max(MIN_SCALE, Math.min(1, pageHeightPx / Math.min(max, min * COMFORT)));
+
+    // Would it fit enough rows per turned page? Lay a copy out to find out.
+    const probe = table.cloneNode(true);
+    probe.style.zoom = String(sideScale);
+    staging.append(probe);
+    const sidewaysPages = probe.getBoundingClientRect().height / columnPx;
+    probe.remove();
+    const rowCount = table.rows.length;
+    if (rowCount / Math.max(1, sidewaysPages) < ${MIN_SIDEWAYS_ROWS}) {
+      table.style.zoom = String(Math.max(${FALLBACK_SCALE}, columnPx / min));
+      table.classList.add("bk-shrunk", "bk-squeezed");
+      report.shrunk++;
+      continue;
+    }
+
     const placeholder = document.createComment("sideways table");
     table.replaceWith(placeholder);
     table.style.zoom = String(sideScale);
