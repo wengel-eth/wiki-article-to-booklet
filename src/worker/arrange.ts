@@ -6,6 +6,10 @@
  *
  * - Infobox map switchers (side by side, see print-css.ts): the maps share
  *   one row.
+ * - Image boxes ({{multiple image}}): pictures side by side share one
+ *   row; a stack of pictures taller than the text beside it becomes a row.
+ *   Photo montages (pictures cropped to set frames) keep the template's
+ *   layout, scaled as a whole.
  * - Galleries: pictures wrap into rows about GALLERY_ROW_MM tall that fill
  *   the width; none is drawn taller than GALLERY_MAX_MM, so a lone picture on
  *   the last row doesn't blow up.
@@ -53,6 +57,88 @@ export const ARRANGE_IMAGES = `(() => {
       const gap = parseFloat(getComputedStyle(box).columnGap) || 0;
       box.style.maxWidth = total * cap + gap * (count - 1) + "px";
       box.style.marginInline = "auto";
+    }
+  }
+
+  // Boxes of pictures stacked one above another ({{multiple image}} with
+  // direction vertical) float beside the text, at under half the column's
+  // width. Taller than the text beside them, they hang past the end of their
+  // section, and what follows can't always go beside them (a wide picture or
+  // a table), which leaves the column next to them empty. Those are set as one
+  // full-width row instead.
+  const isFloat = (el) => getComputedStyle(el).float !== "none";
+  for (const box of document.querySelectorAll("div.thumb.tmulti")) {
+    const inner = box.querySelector(":scope > .thumbinner");
+    // Rows of pictures (the box's caption can have a row of its own).
+    const rows = [...box.querySelectorAll(".trow")].filter((row) => row.querySelector(".tsingle"));
+    if (!inner || !isFloat(box) || rows.length < 2) continue;
+    if (rows.some((row) => row.querySelectorAll(":scope > .tsingle").length !== 1)) continue;
+    const top = box.getBoundingClientRect().top;
+    let textBottom = top;
+    for (let el = box.nextElementSibling; el; el = el.nextElementSibling) {
+      if (el.matches("section, h1, h2, h3, h4, h5, h6, .mw-heading") || isFloat(el)) break;
+      textBottom = Math.max(textBottom, el.getBoundingClientRect().bottom);
+    }
+    if (box.getBoundingClientRect().bottom <= textBottom) continue;
+    for (const row of rows.slice(1)) {
+      rows[0].append(...row.children);
+      row.remove();
+    }
+    inner.setAttribute("data-wide", "");
+  }
+
+  // Photo montages: image boxes whose pictures are cropped to fit frames of a
+  // set size (as at the top of a city's infobox). The template has already
+  // laid them out exactly, in pixels, so that layout is kept, and the whole
+  // montage scaled to the width it has.
+  const px = (el, prop) => Number(el.getAttribute("style")?.match(new RegExp("(?:^|;)\\\\s*" + prop + ":\\\\s*([\\\\d.]+)px"))?.[1]);
+  const fix = (el, prop, value) => el.style.setProperty(prop, value, "important");
+  for (const box of document.querySelectorAll(".tmulti")) {
+    if (!box.querySelector(".tsingle > div[style*='overflow']")) continue;
+    const inner = box.querySelector(".multiimageinner");
+    const width = inner && px(inner, "width");
+    const parent = box.parentElement;
+    const ps = parent && getComputedStyle(parent);
+    const room = parent && parent.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight);
+    if (!width || !room) continue;
+    // At most twice as tall as an infobox picture may be: under half a page.
+    const firstImg = inner.querySelector("img");
+    const cap = firstImg ? 2 * parseFloat(getComputedStyle(firstImg).maxHeight) : NaN;
+    box.dataset.montage = "";
+    // Across the full width, not floated beside the text like other image boxes.
+    fix(box, "float", "none");
+    fix(box, "width", "auto");
+    fix(box, "max-width", "none");
+    fix(box, "margin", "0");
+    for (const el of [inner, ...inner.querySelectorAll(".trow")]) el.style.gap = "0";
+    fix(inner, "width", width + "px");
+    fix(inner, "max-width", "none");
+    inner.style.marginInline = "auto";
+    for (const single of inner.querySelectorAll(".tsingle")) {
+      const w = px(single, "width");
+      if (!w) continue;
+      fix(single, "width", w + "px");
+      fix(single, "max-width", w + "px");
+      fix(single, "flex", "none");
+      fix(single, "margin", "1px");
+    }
+    for (const img of inner.querySelectorAll("img")) {
+      const w = Number(img.getAttribute("width")), h = Number(img.getAttribute("height"));
+      if (!w || !h) continue;
+      fix(img, "width", w + "px");
+      fix(img, "height", h + "px");
+      fix(img, "max-width", "none");
+      fix(img, "max-height", "none");
+    }
+    const height = inner.getBoundingClientRect().height;
+    inner.style.zoom = String(Math.min(room / width, Number.isFinite(cap) && height ? cap / height : Infinity));
+  }
+
+  // Pictures side by side in an image box come out at one height.
+  for (const row of document.querySelectorAll(".tmulti:not([data-montage]) .trow")) {
+    for (const single of row.querySelectorAll(":scope > .tsingle")) {
+      const ratio = shape(single);
+      if (ratio) single.style.flexGrow = String(ratio);
     }
   }
 
