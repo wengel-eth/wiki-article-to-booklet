@@ -62,6 +62,33 @@ export const ARRANGE_IMAGES = `(() => {
     item.style.flex = ratio + " 1 " + (ratio * ${GALLERY_ROW_MM}) + "mm";
     item.style.maxWidth = (ratio * ${GALLERY_MAX_MM}) + "mm";
   }
+
+  // Place labels on location maps: one that would stick out of its map (a
+  // place at the map's edge, or a map drawn small) goes to the other side of
+  // its dot, and is then kept inside the map, so it doesn't run over the
+  // caption or into the next map. Labels sit below the dot (.pv) or to its
+  // left or right (.pl, .pr).
+  const dotRadius = 1.3 * 96 / 25.4; // the dot drawn in print-css.ts
+  for (const label of document.querySelectorAll(".locmap .od > :is(.pv, .pl, .pr)")) {
+    const map = label.closest(".locmap").querySelector("img")?.getBoundingClientRect();
+    const dot = label.parentElement.querySelector(".id")?.getBoundingClientRect();
+    const text = label.firstElementChild?.getBoundingClientRect();
+    if (!map || !dot || !text || !text.width || !map.width) continue;
+    const cx = dot.left + dot.width / 2, cy = dot.top + dot.height / 2;
+    let dx = 0, dy = 0;
+    if (label.classList.contains("pv")) {
+      if (text.bottom > map.bottom) dy = cy - dotRadius - 1 - text.height - text.top;
+      else if (text.top < map.top) dy = cy + dotRadius + 1 - text.top;
+    } else {
+      if (text.right > map.right) dx = cx - dotRadius - 2 - text.width - text.left;
+      else if (text.left < map.left) dx = cx + dotRadius + 2 - text.left;
+    }
+    const clamp = (shift, start, end, min, max) =>
+      start + shift < min ? min - start : end + shift > max ? max - end : shift;
+    dx = clamp(dx, text.left, text.right, map.left, map.right);
+    dy = clamp(dy, text.top, text.bottom, map.top, map.bottom);
+    if (dx || dy) label.style.translate = dx + "px " + dy + "px";
+  }
 })()`;
 
 /**
