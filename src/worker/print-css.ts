@@ -316,8 +316,10 @@ thead tr:last-child, caption { break-after: avoid; }
    in percentages, so they stay put as the maps shrink. */
 .switcher-container { display: flex; gap: 3mm; justify-content: center; align-items: flex-start; }
 .switcher-container > div { flex: 1 1 0; min-width: 0; }
+/* The map's own boxes, not the place labels on it (.od), which have a width
+   of their own, in ems. */
 .switcher-container .locmap,
-.switcher-container .locmap div[style*="width"] { width: 100% !important; max-width: 100%; }
+.switcher-container .locmap div[style*="width"]:not(.od, .od *) { width: 100% !important; max-width: 100%; }
 .switcher-container .locmap img { width: 100%; height: auto; }
 .switcher-container .locmap > div > div:last-of-type:not([style*="position"]) { text-align: center; }
 .switcher-label { display: none !important; }
