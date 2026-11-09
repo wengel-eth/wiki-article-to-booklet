@@ -6,6 +6,13 @@ import { TABLE_CSS } from "./tables";
 /** Fonts are requested from this made-up host and answered by the Worker. */
 export const FONT_ORIGIN = "https://fonts.booklet.invalid";
 
+/** Headings of reference sections (Wikipedia's usual names), as an id selector list. */
+const REFERENCE_SECTION_IDS = `:is(${[
+  "References", "Notes", "Footnotes", "Citations", "Sources", "Works_cited", "Sources_cited", "Cited_sources",
+  "Notes_and_references", "References_and_notes", "Notes_and_citations", "Citations_and_notes",
+  "General_references", "Specific_references", "Inline_citations", "Explanatory_notes",
+].map((id) => `#${id}`).join(", ")})`;
+
 const SERIF = fontStack();
 const SERIF_BY_LANG: [string, string][] = [
   [":lang(ja)", fontStack([CJK.jp, CJK.sc, CJK.tc, CJK.kr])],
@@ -430,8 +437,12 @@ section:has(.mw-references-wrap, .reflist):not(
   section:has(.mw-references-wrap, .reflist) + section
 ) { break-before: page; }
 
-/* With references left out, hide sections that only held them. */
-body.no-references section:not(:has(> :not(h2, h3, .mw-heading, style, link, meta))) { display: none; }
+/* With references left out, hide sections that only held them, and the
+   reference sections themselves, by their usual names: these also hold
+   lists of books cited ("Works cited", "Sources"), which aren't footnotes.
+   Further reading stays: it's suggestions to read, not sources. */
+body.no-references section:not(:has(> :not(h2, h3, .mw-heading, style, link, meta))),
+body.no-references section:has(> :is(h2, h3, h4)${REFERENCE_SECTION_IDS}, > .mw-heading > :is(h2, h3, h4)${REFERENCE_SECTION_IDS}) { display: none; }
 
 /* Lists */
 ul, ol { padding-left: 5mm; margin: 0 0 2mm; }
