@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .cover { fill: #1a1a1a; }
+    .print { fill: #fdfdfb; }
+    .spine { stroke: #fdfdfb; }
+    @media (prefers-color-scheme: dark) {
+      .cover { fill: #e4e2dd; }
+      .print { fill: #171717; }
+      .spine { stroke: #171717; }
+    }
+  </style>
+  <rect class="cover" x="4" y="3" width="24" height="26" rx="2.5"/>
+  <path class="spine" d="M8 3v26" stroke-width="1.2" opacity=".55"/>
+  <path class="print" d="M9.4 10h3l2.4 8.6 2.1-8.6h2l2.5 8.6 2.1-8.6h1.4l-3.4 12.6h-1.3l-2.5-8.8-2.4 8.8h-1.3z"/>
+  <path class="print" d="M8.6 9.6h4.6v1.1H8.6zM16 9.6h3.9v1.1H16zM22.6 9.6h3.2v1.1h-3.2z"/>
+</svg>
