@@ -79,6 +79,10 @@ html {
   print-color-adjust: exact;
 }
 body { margin: 0; }
+/* Anything wider than the column is cut off at the page's edge. Otherwise
+   Chrome shrinks every page to fit it, and the whole booklet prints small.
+   (Not on body itself: that would apply to the window, which doesn't clip.) */
+body > * { overflow-x: clip; }
 /* Justified. Paragraphs are re-broken with Knuth-Plass for even spacing in
    the rendering page (justify.ts); these settings apply where they aren't. */
 p, li, dd {
