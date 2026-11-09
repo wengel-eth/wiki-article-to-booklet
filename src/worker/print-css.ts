@@ -10,7 +10,7 @@ export const FONT_ORIGIN = "https://fonts.booklet.invalid";
 const REFERENCE_SECTION_IDS = `:is(${[
   "References", "Notes", "Footnotes", "Citations", "Sources", "Works_cited", "Sources_cited", "Cited_sources",
   "Notes_and_references", "References_and_notes", "Notes_and_citations", "Citations_and_notes",
-  "General_references", "Specific_references", "Inline_citations", "Explanatory_notes", "Further_reading",
+  "General_references", "Specific_references", "Inline_citations", "Explanatory_notes",
 ].map((id) => `#${id}`).join(", ")})`;
 
 const SERIF = fontStack();
@@ -439,8 +439,8 @@ section:has(.mw-references-wrap, .reflist):not(
 
 /* With references left out, hide sections that only held them, and the
    reference sections themselves, by their usual names: these also hold
-   lists of books cited ("Works cited", "Sources") and further reading,
-   which aren't footnotes. */
+   lists of books cited ("Works cited", "Sources"), which aren't footnotes.
+   Further reading stays: it's suggestions to read, not sources. */
 body.no-references section:not(:has(> :not(h2, h3, .mw-heading, style, link, meta))),
 body.no-references section:has(> :is(h2, h3, h4)${REFERENCE_SECTION_IDS}, > .mw-heading > :is(h2, h3, h4)${REFERENCE_SECTION_IDS}) { display: none; }
 
